@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.romainguy.text.combobreaker.ui.theme
+package dev.romainguy.text.combobreaker.demo.ui.theme
 
 import android.app.Activity
 import android.os.Build

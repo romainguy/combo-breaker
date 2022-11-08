@@ -7,7 +7,7 @@ android {
     compileSdk 33
 
     defaultConfig {
-        applicationId 'dev.romainguy.text.combobreaker'
+        applicationId 'dev.romainguy.text.combobreaker.demo'
         minSdk 29
         targetSdk 33
         versionCode 1
@@ -48,7 +48,7 @@ android {
         }
     }
 
-    namespace 'dev.romainguy.text.combobreaker'
+    namespace 'dev.romainguy.text.combobreaker.demo'
 }
 
 dependencies {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.romainguy.text.combobreaker.ui.theme
+package dev.romainguy.text.combobreaker.demo.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

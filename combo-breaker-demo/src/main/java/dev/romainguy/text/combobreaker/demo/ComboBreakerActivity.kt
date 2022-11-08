@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.romainguy.text.combobreaker
+package dev.romainguy.text.combobreaker.demo
 
 import android.graphics.BitmapFactory
 import android.graphics.Paint
@@ -55,7 +55,12 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.PathSegment
 import androidx.core.graphics.and
-import dev.romainguy.text.combobreaker.ui.theme.ComboBreakerTheme
+import dev.romainguy.text.combobreaker.Interval
+import dev.romainguy.text.combobreaker.IntervalTree
+import dev.romainguy.text.combobreaker.clipSegment
+import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
+import dev.romainguy.text.combobreaker.toContour
+import dev.romainguy.text.combobreaker.toIntervals
 import java.lang.Float.max
 import java.lang.Float.min
 
