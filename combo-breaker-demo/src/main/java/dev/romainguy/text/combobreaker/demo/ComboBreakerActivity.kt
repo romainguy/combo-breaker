@@ -54,7 +54,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.PathSegment
-import androidx.core.graphics.and
 import dev.romainguy.text.combobreaker.Interval
 import dev.romainguy.text.combobreaker.IntervalTree
 import dev.romainguy.text.combobreaker.clipSegment
@@ -79,6 +78,15 @@ Tiled shading can be applied to both forward and deferred rendering methods. The
 
 data class TextLine(val paragraph: String, val start: Int, val end: Int, val x: Float, val y: Float)
 
+class ExclusionArea(val path: Path) {
+    val intervals = IntervalTree<PathSegment>()
+
+    fun computeIntervals() {
+        intervals.clear()
+        path.toIntervals(intervals)
+    }
+}
+
 class ComboBreakerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,28 +110,28 @@ fun ComboBreaker(text: String) {
     val density = LocalDensity.current.density
 
     val bitmap1 = remember { BitmapFactory.decodeResource(resources, R.drawable.microphone) }
-    var floatLeft = remember { bitmap1.toContour(alphaThreshold = 0.1f, margin = 8.0f * density).asComposePath() }
-
     val bitmap2 = remember { BitmapFactory.decodeResource(resources, R.drawable.badge) }
-    var floatRight = remember { bitmap2.toContour(margin = 2.0f * density).asComposePath() }
-
-    val intervalsLeft = remember { IntervalTree<PathSegment>() }
-    val intervalsRight = remember { IntervalTree<PathSegment>() }
+    val exclusionAreas = remember {
+        listOf(
+            ExclusionArea(
+                bitmap1.toContour(alphaThreshold = 0.1f, margin = 8.0f * density).asComposePath()
+            ),
+            ExclusionArea(
+                bitmap2.toContour(margin = 2.0f * density).asComposePath()
+            )
+        )
+    }
 
     val linePosition = remember { mutableStateOf(Float.NaN) }
-
-    val paint = Paint().apply {
-        textSize = 32.0f
-    }
+    val paint = Paint().apply { textSize = 32.0f }
     val lineHeight = paint.fontMetrics.descent - paint.fontMetrics.ascent
-
     val textLines = mutableListOf<TextLine>()
 
     Spacer(
         modifier = Modifier
             .onSizeChanged { size ->
                 // TODO: What follows isn't really compatible with multiple onSizeChanged() invocations
-                floatRight.apply {
+                exclusionAreas[1].path.apply {
                     translate(Offset((size.width - bitmap2.width).toFloat(), size.height / 2.0f))
                 }
 
@@ -134,19 +142,22 @@ fun ComboBreaker(text: String) {
                 // Clips the source shapes against our work area to speed up later process
                 // and to sanitize the paths (fixes complexity introduced by expansion via
                 // getFillPath() with FILL_AND_STROKE, but it's an expensive step)
-                floatLeft = (floatLeft.asAndroidPath() and clip.asAndroidPath()).asComposePath()
-                floatRight = (floatRight.asAndroidPath() and clip.asAndroidPath()).asComposePath()
+                for (area in exclusionAreas) {
+                    area
+                        .path
+                        .asAndroidPath()
+                        .op(clip.asAndroidPath(), android.graphics.Path.Op.INTERSECT)
+                    // TODO: Necessary step, we should make this less error-prone with automation
+                    area.computeIntervals()
+                }
 
                 layoutText(
                     text,
-                    floatLeft,
-                    floatRight,
                     lineHeight,
                     size,
                     paint,
-                    intervalsLeft,
-                    intervalsRight,
-                    textLines
+                    textLines,
+                    exclusionAreas
                 )
             }
             .drawWithCache {
@@ -173,15 +184,11 @@ fun ComboBreaker(text: String) {
                 val y1 = y - lineHeight / 2.0f
                 val y2 = y + lineHeight / 2.0f
 
-                val resultsLeft = mutableListOf<Interval<PathSegment>>()
-                val resultsRight = mutableListOf<Interval<PathSegment>>()
-
-                val (x1, x2) = availableSpace(
+                val results = mutableListOf<Interval<PathSegment>>()
+                val spaces = availableSpaces(
                     RectF(0.0f, y1, size.width, y2),
-                    intervalsLeft,
-                    intervalsRight,
-                    resultsLeft,
-                    resultsRight
+                    exclusionAreas,
+                    results
                 )
 
                 onDrawWithContent {
@@ -192,8 +199,9 @@ fun ComboBreaker(text: String) {
                     )
 
                     if (linePosition.value.isFinite()) {
-                        drawPath(floatLeft, stripeFill)
-                        drawPath(floatRight, stripeFill)
+                        for (area in exclusionAreas) {
+                            drawPath(area.path, stripeFill)
+                        }
 
                         fun drawResults(results: List<Interval<PathSegment>>) {
                             results.forEach { interval ->
@@ -208,24 +216,22 @@ fun ComboBreaker(text: String) {
                             }
                         }
 
-                        drawResults(resultsLeft)
-                        drawResults(resultsRight)
+                        drawResults(results)
 
                         drawRect(
                             color = lineFill,
                             topLeft = Offset(0.0f, y1),
-                            size = Size(x1, lineHeight)
+                            size = Size(size.width, lineHeight)
                         )
-                        drawRect(
-                            color = lineFill,
-                            topLeft = Offset(x2, y1),
-                            size = Size(size.width - x2, lineHeight)
-                        )
-                        drawRect(
-                            color = secondaryLineFill,
-                            topLeft = Offset(x1, y1),
-                            size = Size(x2 - x1, lineHeight)
-                        )
+
+                        for (space in spaces) {
+                            drawRect(
+                                color = secondaryLineFill,
+                                topLeft = space.toOffset(),
+                                size = space.toSize()
+                            )
+                        }
+
                         drawLine(
                             color = lineBorder,
                             start = Offset(0.0f, y1),
@@ -262,28 +268,22 @@ fun ComboBreaker(text: String) {
 // they could be merged with "lines" in a single data structure to make debugging optional)
 private fun layoutText(
     text: String,
-    floatLeft: Path,
-    floatRight: Path,
     lineHeight: Float,
     size: IntSize,
     paint: Paint,
-    intervalsLeft: IntervalTree<PathSegment>,
-    intervalsRight: IntervalTree<PathSegment>,
-    lines: MutableList<TextLine>
+    lines: MutableList<TextLine>,
+    exclusionAreas: List<ExclusionArea>
 ) {
-    floatLeft.toIntervals(intervalsLeft)
-    floatRight.toIntervals(intervalsRight)
-
     lines.clear()
 
     val lineBreaker = LineBreaker.Builder()
-        .setBreakStrategy(LineBreaker.BREAK_STRATEGY_SIMPLE)
+        .setBreakStrategy(LineBreaker.BREAK_STRATEGY_HIGH_QUALITY)
+        .setHyphenationFrequency(LineBreaker.HYPHENATION_FREQUENCY_NONE)
         .setJustificationMode(LineBreaker.JUSTIFICATION_MODE_NONE)
         .build()
     val constraints = LineBreaker.ParagraphConstraints()
 
-    val resultsLeft = mutableListOf<Interval<PathSegment>>()
-    val resultsRight = mutableListOf<Interval<PathSegment>>()
+    val results = mutableListOf<Interval<PathSegment>>()
 
     var y = 0.0f
 
@@ -297,81 +297,140 @@ private fun layoutText(
 
         if (paragraph.isEmpty()) y += lineHeight
 
+        var ascent = 0.0f
+        var descent = 0.0f
+        var first = true
+
         while (breakOffset < paragraph.length && y < size.height) {
-            val (x1, x2) = availableSpace(
+            val spaces = availableSpaces(
                 RectF(0.0f, y, size.width.toFloat(), y + lineHeight),
-                intervalsLeft,
-                intervalsRight,
-                resultsLeft,
-                resultsRight
+                exclusionAreas,
+                results
             )
 
-            constraints.width = x2 - x1
+            y += ascent
+            for (space in spaces) {
+                val x1 = space.left
+                val x2 = space.right
+                constraints.width = x2 - x1
 
-            val subtext = paragraph.substring(breakOffset)
-            val measuredText = MeasuredText.Builder(subtext.toCharArray())
-                .appendStyleRun(paint, subtext.length, false)
-                .build()
-            val result = lineBreaker.computeLineBreaks(measuredText, constraints, 0)
-            val lineOffset = result.getLineBreakOffset(0)
+                val subtext = paragraph.substring(breakOffset)
+                val measuredText = MeasuredText.Builder(subtext.toCharArray())
+                    .appendStyleRun(paint, subtext.length, false)
+                    .build()
+                val result = lineBreaker.computeLineBreaks(measuredText, constraints, 0)
 
-            y += -result.getLineAscent(0)
-            lines.add(TextLine(paragraph, breakOffset, breakOffset + lineOffset, x1, y))
-            y += result.getLineDescent(0)
+                if (result.getLineWidth(0) > constraints.width) continue
 
-            breakOffset += lineOffset
+                ascent = -result.getLineAscent(0)
+                descent = result.getLineDescent(0)
+
+                if (first) {
+                    y += ascent
+                    first = false
+                }
+
+                val lineOffset = result.getLineBreakOffset(0)
+                lines.add(TextLine(paragraph, breakOffset, breakOffset + lineOffset, x1, y))
+
+                breakOffset += lineOffset
+
+                if (breakOffset >= paragraph.length || y >= size.height) break
+            }
+            y += descent
         }
     }
 }
 
 // Note: clears the results parameters
-private fun availableSpace(
+private fun availableSpaces(
     box: RectF,
-    intervalsLeft: IntervalTree<PathSegment>,
-    intervalsRight: IntervalTree<PathSegment>,
-    resultsLeft: MutableList<Interval<PathSegment>>,
-    resultsRight: MutableList<Interval<PathSegment>>
-): Pair<Float, Float> {
+    exclusionAreas: List<ExclusionArea>,
+    results: MutableList<Interval<PathSegment>>,
+): List<RectF> {
+    results.clear()
+    // TODO: Pass this to avoid the allocation
+    val spaces = mutableListOf<RectF>()
+
     val searchInterval = Interval<PathSegment>(box.top, box.bottom)
+    val areaResults = mutableListOf<Interval<PathSegment>>()
 
-    resultsLeft.clear()
-    intervalsLeft.findOverlaps(searchInterval, resultsLeft)
+    for (area in exclusionAreas) {
+        areaResults.clear()
+        area.intervals.findOverlaps(searchInterval, areaResults)
 
-    val p1 = PointF()
-    val p2 = PointF()
-    val out = PointF()
+        val p1 = PointF()
+        val p2 = PointF()
+        val out = PointF()
 
-    var x1 = box.left
-    resultsLeft.forEach { interval ->
-        val segment = interval.data
-        checkNotNull(segment)
+        var areaMin = Float.POSITIVE_INFINITY
+        var areaMax = Float.NEGATIVE_INFINITY
 
-        p1.set(segment.start)
-        p2.set(segment.end)
+        areaResults.forEach { interval ->
+            val segment = interval.data
+            checkNotNull(segment)
 
-        if (clipSegment(p1, p2, box, out)) {
-            x1 = max(x1, max(p1.x, p2.x))
+            p1.set(segment.start)
+            p2.set(segment.end)
+
+            if (clipSegment(p1, p2, box, out)) {
+                areaMin = min(areaMin, min(p1.x, p2.x))
+                areaMax = max(areaMax, max(p1.x, p2.x))
+            }
         }
+
+        val newSpaces = mutableListOf<RectF>()
+        if (areaMin != Float.POSITIVE_INFINITY) {
+            if (spaces.size == 0) {
+                newSpaces.add(RectF(box.left, box.top, areaMin, box.bottom))
+            } else {
+                for (space in spaces) {
+                    val r = RectF(box.left, box.top, areaMin, box.bottom)
+                    val s = RectF(r)
+                    r.intersect(space)
+                    space.intersect(s)
+                    if (r != space) {
+                        newSpaces.add(r)
+                        break
+                    }
+                }
+            }
+        }
+
+        if (areaMax != Float.NEGATIVE_INFINITY) {
+            if (spaces.size == 0) {
+                newSpaces.add(RectF(areaMax, box.top, box.right, box.bottom))
+            } else {
+                for (space in spaces) {
+                    val r = RectF(areaMax, box.top, box.right, box.bottom)
+                    val s = RectF(r)
+                    r.intersect(space)
+                    space.intersect(s)
+                    if (r != space) {
+                        newSpaces.add(r)
+                        break
+                    }
+                }
+            }
+        }
+
+        spaces.addAll(newSpaces)
+
+        results.addAll(areaResults)
     }
 
-    resultsRight.clear()
-    intervalsRight.findOverlaps(searchInterval, resultsRight)
-
-    var x2 = box.right
-    resultsRight.forEach { interval ->
-        val segment = interval.data
-        checkNotNull(segment)
-
-        p1.set(segment.start)
-        p2.set(segment.end)
-
-        if (clipSegment(p1, p2, box, out)) {
-            x2 = min(x2, min(p1.x, p2.x))
-        }
+    if (spaces.size == 0) {
+        spaces.add(box)
     }
 
-    return Pair(x1, x2)
+    return spaces
 }
 
 @Suppress("NOTHING_TO_INLINE")
 internal inline fun PointF.toOffset() = Offset(x, y)
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun RectF.toOffset() = Offset(left, top)
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun RectF.toSize() = Size(width(), height())
