@@ -28,6 +28,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -73,7 +74,7 @@ Our goal is therefore to make all lighting correct by default, while giving arti
 Deferred rendering is used by many modern 3D rendering engines to easily support dozens, hundreds or even thousands of light source (amongst other benefits). This method is unfortunately very expensive in terms of bandwidth. With our default PBR material model, our G-buffer would use between 160 and 192 bits per pixel, which would translate directly to rather high bandwidth requirements.
 Forward rendering methods on the other hand have historically been bad at handling multiple lights. A common implementation is to render the scene multiple times, once per visible light, and to blend (add) the results. Another technique consists in assigning a fixed maximum of lights to each object in the scene. This is however impractical when objects occupy a vast amount of space in the world (building, road, etc.).
 
-Tiled shading can be applied to both forward and deferred rendering methods. The idea is to split the screen in a grid of tiles and for each tile, find the list of lights that affect the pixels within that tile. This has the advantage of reducing overdraw (in deferred rendering) and shading computations of large objects (in forward rendering). This technique suffers however from depth discontinuities issues that can lead to large amounts of extraneous work."""
+Tiled shading can be applied to both forward and deferred rendering methods."""
 //endregion
 
 data class TextLine(val paragraph: String, val start: Int, val end: Int, val x: Float, val y: Float)
@@ -110,7 +111,10 @@ class ComboBreakerActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    ComboBreaker(SampleText)
+                    ComboBreaker(
+                        Modifier.padding(16.dp),
+                        SampleText
+                    )
                 }
             }
         }
@@ -118,7 +122,7 @@ class ComboBreakerActivity : ComponentActivity() {
 }
 
 @Composable
-fun ComboBreaker(text: String) {
+fun ComboBreaker(modifier: Modifier, text: String) {
     val resources = LocalContext.current.resources
     val density = LocalDensity.current.density
 
@@ -143,7 +147,7 @@ fun ComboBreaker(text: String) {
     val textLines = mutableListOf<TextLine>()
 
     Spacer(
-        modifier = Modifier
+        modifier = modifier
             .onSizeChanged { size ->
                 // TODO: What follows isn't really compatible with multiple onSizeChanged() invocations
                 flowShapes[0].path.apply {
