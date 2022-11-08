@@ -92,9 +92,9 @@ enum class FlowType(private val bits: Int) {
 }
 
 class FlowShape(val path: Path, val flowType: FlowType = FlowType.Both) {
-    val intervals = IntervalTree<PathSegment>()
+    internal val intervals = IntervalTree<PathSegment>()
 
-    fun computeIntervals() {
+    internal fun computeIntervals() {
         intervals.clear()
         path.toIntervals(intervals)
     }
