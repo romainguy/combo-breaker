@@ -78,7 +78,20 @@ Tiled shading can be applied to both forward and deferred rendering methods. The
 
 data class TextLine(val paragraph: String, val start: Int, val end: Int, val x: Float, val y: Float)
 
-class ExclusionArea(val path: Path) {
+enum class FlowType(private val bits: Int) {
+    Left(1),
+    Right(2),
+    Both(3),
+    None(0);
+
+    internal val isLeftFlow: Boolean
+        get() { return (bits and 0x1) != 0 }
+
+    internal val isRightFlow: Boolean
+        get() { return (bits and 0x2) != 0 }
+}
+
+class FlowShape(val path: Path, val flowType: FlowType = FlowType.Both) {
     val intervals = IntervalTree<PathSegment>()
 
     fun computeIntervals() {
@@ -111,13 +124,15 @@ fun ComboBreaker(text: String) {
 
     val bitmap1 = remember { BitmapFactory.decodeResource(resources, R.drawable.microphone) }
     val bitmap2 = remember { BitmapFactory.decodeResource(resources, R.drawable.badge) }
-    val exclusionAreas = remember {
+    val flowShapes = remember {
         listOf(
-            ExclusionArea(
-                bitmap1.toContour(alphaThreshold = 0.1f, margin = 8.0f * density).asComposePath()
+            FlowShape(
+                bitmap1.toContour(alphaThreshold = 0.1f, margin = 10.0f * density).asComposePath(),
+                FlowType.Right
             ),
-            ExclusionArea(
-                bitmap2.toContour(margin = 2.0f * density).asComposePath()
+            FlowShape(
+                bitmap2.toContour(margin = 2.0f * density).asComposePath(),
+                FlowType.Left
             )
         )
     }
@@ -131,7 +146,10 @@ fun ComboBreaker(text: String) {
         modifier = Modifier
             .onSizeChanged { size ->
                 // TODO: What follows isn't really compatible with multiple onSizeChanged() invocations
-                exclusionAreas[1].path.apply {
+                flowShapes[0].path.apply {
+                    translate(Offset(-bitmap1.width / 4.5f, 0.0f))
+                }
+                flowShapes[1].path.apply {
                     translate(Offset((size.width - bitmap2.width).toFloat(), size.height / 2.0f))
                 }
 
@@ -142,13 +160,13 @@ fun ComboBreaker(text: String) {
                 // Clips the source shapes against our work area to speed up later process
                 // and to sanitize the paths (fixes complexity introduced by expansion via
                 // getFillPath() with FILL_AND_STROKE, but it's an expensive step)
-                for (area in exclusionAreas) {
-                    area
+                for (flowShape in flowShapes) {
+                    flowShape
                         .path
                         .asAndroidPath()
                         .op(clip.asAndroidPath(), android.graphics.Path.Op.INTERSECT)
                     // TODO: Necessary step, we should make this less error-prone with automation
-                    area.computeIntervals()
+                    flowShape.computeIntervals()
                 }
 
                 layoutText(
@@ -157,7 +175,7 @@ fun ComboBreaker(text: String) {
                     size,
                     paint,
                     textLines,
-                    exclusionAreas
+                    flowShapes
                 )
             }
             .drawWithCache {
@@ -187,20 +205,23 @@ fun ComboBreaker(text: String) {
                 val results = mutableListOf<Interval<PathSegment>>()
                 val spaces = availableSpaces(
                     RectF(0.0f, y1, size.width, y2),
-                    exclusionAreas,
+                    flowShapes,
                     results
                 )
 
                 onDrawWithContent {
-                    drawImage(bitmap1.asImageBitmap())
+                    drawImage(
+                        bitmap1.asImageBitmap(),
+                        topLeft = Offset(-bitmap1.width / 4.5f, 0.0f)
+                    )
                     drawImage(
                         bitmap2.asImageBitmap(),
                         topLeft = Offset(size.width - bitmap2.width, size.height / 2.0f)
                     )
 
                     if (linePosition.value.isFinite()) {
-                        for (area in exclusionAreas) {
-                            drawPath(area.path, stripeFill)
+                        for (flowShape in flowShapes) {
+                            drawPath(flowShape.path, stripeFill)
                         }
 
                         fun drawResults(results: List<Interval<PathSegment>>) {
@@ -272,7 +293,7 @@ private fun layoutText(
     size: IntSize,
     paint: Paint,
     lines: MutableList<TextLine>,
-    exclusionAreas: List<ExclusionArea>
+    flowShapes: List<FlowShape>
 ) {
     lines.clear()
 
@@ -304,7 +325,7 @@ private fun layoutText(
         while (breakOffset < paragraph.length && y < size.height) {
             val spaces = availableSpaces(
                 RectF(0.0f, y, size.width.toFloat(), y + lineHeight),
-                exclusionAreas,
+                flowShapes,
                 results
             )
 
@@ -345,19 +366,22 @@ private fun layoutText(
 // Note: clears the results parameters
 private fun availableSpaces(
     box: RectF,
-    exclusionAreas: List<ExclusionArea>,
+    flowShapes: List<FlowShape>,
     results: MutableList<Interval<PathSegment>>,
 ): List<RectF> {
     results.clear()
-    // TODO: Pass this to avoid the allocation
     val spaces = mutableListOf<RectF>()
 
     val searchInterval = Interval<PathSegment>(box.top, box.bottom)
-    val areaResults = mutableListOf<Interval<PathSegment>>()
+    val intervals = mutableListOf<Interval<PathSegment>>()
 
-    for (area in exclusionAreas) {
-        areaResults.clear()
-        area.intervals.findOverlaps(searchInterval, areaResults)
+    val newSpaces = mutableListOf<RectF>()
+
+    for (flowShape in flowShapes) {
+        if (flowShape.flowType == FlowType.None) continue
+
+        intervals.clear()
+        flowShape.intervals.findOverlaps(searchInterval, intervals)
 
         val p1 = PointF()
         val p2 = PointF()
@@ -366,7 +390,7 @@ private fun availableSpaces(
         var areaMin = Float.POSITIVE_INFINITY
         var areaMax = Float.NEGATIVE_INFINITY
 
-        areaResults.forEach { interval ->
+        intervals.forEach { interval ->
             val segment = interval.data
             checkNotNull(segment)
 
@@ -379,8 +403,9 @@ private fun availableSpaces(
             }
         }
 
-        val newSpaces = mutableListOf<RectF>()
-        if (areaMin != Float.POSITIVE_INFINITY) {
+        newSpaces.clear()
+
+        if (flowShape.flowType.isLeftFlow && areaMin != Float.POSITIVE_INFINITY) {
             if (spaces.size == 0) {
                 newSpaces.add(RectF(box.left, box.top, areaMin, box.bottom))
             } else {
@@ -397,7 +422,7 @@ private fun availableSpaces(
             }
         }
 
-        if (areaMax != Float.NEGATIVE_INFINITY) {
+        if (flowShape.flowType.isRightFlow && areaMax != Float.NEGATIVE_INFINITY) {
             if (spaces.size == 0) {
                 newSpaces.add(RectF(areaMax, box.top, box.right, box.bottom))
             } else {
@@ -415,8 +440,7 @@ private fun availableSpaces(
         }
 
         spaces.addAll(newSpaces)
-
-        results.addAll(areaResults)
+        results.addAll(intervals)
     }
 
     if (spaces.size == 0) {
