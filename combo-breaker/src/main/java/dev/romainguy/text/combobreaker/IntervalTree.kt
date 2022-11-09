@@ -19,8 +19,6 @@ package dev.romainguy.text.combobreaker
 import kotlin.math.max
 import kotlin.math.min
 
-// TODO: Make Interval and IntervalTree internal
-
 class Interval<T>(val start: Float, val end: Float, val data: T? = null) {
     fun overlaps(other: Interval<T>) = start <= other.end && end >= other.start
 }

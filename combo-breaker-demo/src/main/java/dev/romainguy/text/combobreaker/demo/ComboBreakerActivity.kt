@@ -55,14 +55,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.PathSegment
+import dev.romainguy.text.combobreaker.FlowShape
+import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.Interval
-import dev.romainguy.text.combobreaker.IntervalTree
-import dev.romainguy.text.combobreaker.clipSegment
+import dev.romainguy.text.combobreaker.availableSpaces
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
 import dev.romainguy.text.combobreaker.toContour
-import dev.romainguy.text.combobreaker.toIntervals
-import java.lang.Float.max
-import java.lang.Float.min
 
 //region Sample text
 const val SampleText = """The correctness and coherence of the lighting environment is paramount to achieving plausible visuals. After surveying existing rendering engines (such as Unity or Unreal Engine 4) as well as the traditional real-time rendering literature, it is obvious that coherency is rarely achieved.
@@ -78,28 +76,6 @@ Tiled shading can be applied to both forward and deferred rendering methods."""
 //endregion
 
 data class TextLine(val paragraph: String, val start: Int, val end: Int, val x: Float, val y: Float)
-
-enum class FlowType(private val bits: Int) {
-    Left(1),
-    Right(2),
-    Both(3),
-    None(0);
-
-    internal val isLeftFlow: Boolean
-        get() { return (bits and 0x1) != 0 }
-
-    internal val isRightFlow: Boolean
-        get() { return (bits and 0x2) != 0 }
-}
-
-class FlowShape(val path: Path, val flowType: FlowType = FlowType.Both) {
-    internal val intervals = IntervalTree<PathSegment>()
-
-    internal fun computeIntervals() {
-        intervals.clear()
-        path.toIntervals(intervals)
-    }
-}
 
 class ComboBreakerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -169,7 +145,7 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                         .path
                         .asAndroidPath()
                         .op(clip.asAndroidPath(), android.graphics.Path.Op.INTERSECT)
-                    // TODO: Necessary step, we should make this less error-prone with automation
+                    // TODO: Should be internal inside the combo-breaker module
                     flowShape.computeIntervals()
                 }
 
@@ -365,93 +341,6 @@ private fun layoutText(
             y += descent
         }
     }
-}
-
-// Note: clears the results parameters
-private fun availableSpaces(
-    box: RectF,
-    flowShapes: List<FlowShape>,
-    results: MutableList<Interval<PathSegment>>,
-): List<RectF> {
-    results.clear()
-    val spaces = mutableListOf<RectF>()
-
-    val searchInterval = Interval<PathSegment>(box.top, box.bottom)
-    val intervals = mutableListOf<Interval<PathSegment>>()
-
-    val newSpaces = mutableListOf<RectF>()
-
-    for (flowShape in flowShapes) {
-        if (flowShape.flowType == FlowType.None) continue
-
-        intervals.clear()
-        flowShape.intervals.findOverlaps(searchInterval, intervals)
-
-        val p1 = PointF()
-        val p2 = PointF()
-        val out = PointF()
-
-        var areaMin = Float.POSITIVE_INFINITY
-        var areaMax = Float.NEGATIVE_INFINITY
-
-        intervals.forEach { interval ->
-            val segment = interval.data
-            checkNotNull(segment)
-
-            p1.set(segment.start)
-            p2.set(segment.end)
-
-            if (clipSegment(p1, p2, box, out)) {
-                areaMin = min(areaMin, min(p1.x, p2.x))
-                areaMax = max(areaMax, max(p1.x, p2.x))
-            }
-        }
-
-        newSpaces.clear()
-
-        if (flowShape.flowType.isLeftFlow && areaMin != Float.POSITIVE_INFINITY) {
-            if (spaces.size == 0) {
-                newSpaces.add(RectF(box.left, box.top, areaMin, box.bottom))
-            } else {
-                for (space in spaces) {
-                    val r = RectF(box.left, box.top, areaMin, box.bottom)
-                    val s = RectF(r)
-                    r.intersect(space)
-                    space.intersect(s)
-                    if (r != space) {
-                        newSpaces.add(r)
-                        break
-                    }
-                }
-            }
-        }
-
-        if (flowShape.flowType.isRightFlow && areaMax != Float.NEGATIVE_INFINITY) {
-            if (spaces.size == 0) {
-                newSpaces.add(RectF(areaMax, box.top, box.right, box.bottom))
-            } else {
-                for (space in spaces) {
-                    val r = RectF(areaMax, box.top, box.right, box.bottom)
-                    val s = RectF(r)
-                    r.intersect(space)
-                    space.intersect(s)
-                    if (r != space) {
-                        newSpaces.add(r)
-                        break
-                    }
-                }
-            }
-        }
-
-        spaces.addAll(newSpaces)
-        results.addAll(intervals)
-    }
-
-    if (spaces.size == 0) {
-        spaces.add(box)
-    }
-
-    return spaces
 }
 
 @Suppress("NOTHING_TO_INLINE")

@@ -20,19 +20,32 @@ import android.graphics.Bitmap
 import android.graphics.Paint
 import android.graphics.Path
 
-private val HorizontalShift = intArrayOf(
+internal val HorizontalShift = intArrayOf(
      0,  1,  0,  1,
      0,  0,  0,  0,
     -1,  0,  0,  1,
     -1, -1,  0,  0
 )
 
-private val VerticalShift = intArrayOf(
+internal val VerticalShift = intArrayOf(
      0,  0,  1,  0,
     -1, -1,  0, -1,
      0,  0,  1,  0,
      0,  0,  1,  0
 )
+
+// TODO: Rewrite marching squares algorithm to handle multiple contours
+//       and to be more robust (need to handle diagonal cases)
+internal fun direction(pixels: IntArray, index: Int, stride: Int, threshold: Int): Int {
+    // Set bit to 1 when alpha channel is >= threshold, 0 otherwise
+    val key =
+        ((((pixels[index]              ushr 24) - threshold) ushr 31) xor 1 shl 3) or
+        ((((pixels[index + 1]          ushr 24) - threshold) ushr 31) xor 1 shl 2) or
+        ((((pixels[index + stride]     ushr 24) - threshold) ushr 31) xor 1 shl 1) or
+        ((((pixels[index + stride + 1] ushr 24) - threshold) ushr 31) xor 1)
+
+    return index + HorizontalShift[key] + VerticalShift[key] * stride
+}
 
 fun Bitmap.toContour(
     margin: Float = 0.0f,
@@ -58,21 +71,8 @@ fun Bitmap.toContour(
         }
     }
 
-    // TODO: Rewrite marching squares algorithm to handle multiple contours
-    //       and to be more robust (need to handle diagonal cases)
-    fun direction(pixels: IntArray, index: Int): Int {
-        // Set bit to 1 when alpha channel is >= threshold, 0 otherwise
-        val key =
-            ((((pixels[index]         ushr 24) - threshold) ushr 31) xor 1 shl 3) or
-            ((((pixels[index + 1]     ushr 24) - threshold) ushr 31) xor 1 shl 2) or
-            ((((pixels[index + w]     ushr 24) - threshold) ushr 31) xor 1 shl 1) or
-            ((((pixels[index + w + 1] ushr 24) - threshold) ushr 31) xor 1)
-
-        return index + HorizontalShift[key] + VerticalShift[key] * w
-    }
-
     var i = 0
-    var index = direction(pixels, start)
+    var index = direction(pixels, start, w, threshold)
 
     val sx = index % w - 1
     val sy = index / w - 1
@@ -86,7 +86,7 @@ fun Bitmap.toContour(
     path.moveTo(px, py)
 
     while (i++ < pixels.size) {
-        index = direction(pixels, index)
+        index = direction(pixels, index, w, threshold)
 
         val x = index % w - 1
         val y = index / w - 1

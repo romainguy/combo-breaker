@@ -26,27 +26,26 @@ private const val ClipBottom = 2
 private const val ClipLeft = 4
 private const val ClipRight = 8
 
-// TODO: Make internal
-fun clipSegment(p1: PointF, p2: PointF, r: RectF, out: PointF): Boolean {
-    var p1Clip = clipType(p1, r)
-    var p2Clip = clipType(p2, r)
+internal fun clipSegment(p1: PointF, p2: PointF, r: RectF, out: PointF): Boolean {
+    var clip1 = clipType(p1, r)
+    var clip2 = clipType(p2, r)
 
     while (true) {
-        if ((p1Clip or p2Clip) == ClipInside) return true
-        if ((p1Clip and p2Clip) != ClipInside) return false
+        if ((clip1 or clip2) == ClipInside) return true
+        if ((clip1 and clip2) != ClipInside) return false
 
         // No need to test for the case where both end points are outside of the rectangle
         // since we only test against parts of the path that overlap the text interval
 
-        val clipType = if (p1Clip != ClipInside) p1Clip else p2Clip
+        val clipType = if (clip1 != ClipInside) clip1 else clip2
         intersection(p1, p2, r, clipType, out)
 
-        if (clipType == p1Clip) {
+        if (clipType == clip1) {
             p1.set(out)
-            p1Clip = clipType(p1, r)
+            clip1 = clipType(p1, r)
         } else {
             p2.set(out)
-            p2Clip = clipType(p2, r)
+            clip2 = clipType(p2, r)
         }
     }
 }

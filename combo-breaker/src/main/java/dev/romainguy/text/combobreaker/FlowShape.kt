@@ -17,25 +17,28 @@
 package dev.romainguy.text.combobreaker
 
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.asAndroidPath
 import androidx.core.graphics.PathSegment
-import androidx.core.graphics.flatten
-import kotlin.math.max
-import kotlin.math.min
 
-internal fun Path.toIntervals(
-    intervals: IntervalTree<PathSegment> = IntervalTree()
-): IntervalTree<PathSegment> {
-    intervals.clear()
+enum class FlowType(private val bits: Int) {
+    Left(1),
+    Right(2),
+    Both(3),
+    None(0);
 
-    // An error of 1 px is enough for our purpose as we don't need to AA the path
-    asAndroidPath()
-        .flatten(1.0f)
-        .forEach { segment ->
-            val start = min(segment.start.y, segment.end.y)
-            val end = max(segment.start.y, segment.end.y)
-            intervals += Interval(start, end, segment)
-        }
+    internal val isLeftFlow: Boolean
+        get() { return (bits and 0x1) != 0 }
 
-    return intervals
+    internal val isRightFlow: Boolean
+        get() { return (bits and 0x2) != 0 }
+}
+
+class FlowShape(val path: Path, val flowType: FlowType = FlowType.Both) {
+    internal val intervals = IntervalTree<PathSegment>()
+
+    // TODO: Find a better way; the caller shouldn't have to invoke this
+    // TODO: At least, make it internal
+    fun computeIntervals() {
+        intervals.clear()
+        path.toIntervals(intervals)
+    }
 }
