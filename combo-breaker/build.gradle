@@ -1,8 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
-    // TODO: Apply plugin
-    // id 'org.jetbrains.dokka'
+    id 'org.jetbrains.dokka'
 }
 
 group = GROUP
@@ -37,8 +36,7 @@ dependencies {
 
     androidTestImplementation 'androidx.test:runner:1.4.0'
     androidTestImplementation 'androidx.test:rules:1.4.0'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.4'
 }
 
-// TODO: apply plugin
-// apply plugin: 'com.vanniktech.maven.publish'
+apply plugin: 'com.vanniktech.maven.publish'

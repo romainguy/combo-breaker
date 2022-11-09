@@ -4,6 +4,8 @@ plugins {
 }
 
 android {
+    namespace 'dev.romainguy.text.combobreaker.demo'
+
     compileSdk 33
 
     defaultConfig {
@@ -47,8 +49,6 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
-
-    namespace 'dev.romainguy.text.combobreaker.demo'
 }
 
 dependencies {
