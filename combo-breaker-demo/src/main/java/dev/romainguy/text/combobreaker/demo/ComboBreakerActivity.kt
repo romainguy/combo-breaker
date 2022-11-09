@@ -263,10 +263,6 @@ fun ComboBreaker(modifier: Modifier, text: String) {
     )
 }
 
-// Note on the "out" parameters:
-// intervalsLeft, intervalsRight are only used by the caller for debugging purposes. Ideally they
-// would be allocated inside this function to keep the signature more reasonable (or more likely,
-// they could be merged with "lines" in a single data structure to make debugging optional)
 private fun layoutText(
     text: String,
     lineHeight: Float,
