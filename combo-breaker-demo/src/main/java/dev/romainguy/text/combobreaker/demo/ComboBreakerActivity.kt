@@ -23,6 +23,7 @@ import android.graphics.RectF
 import android.graphics.text.LineBreaker
 import android.graphics.text.MeasuredText
 import android.os.Bundle
+import android.text.TextPaint
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -69,13 +70,21 @@ The Unreal Engine, for instance, lets artists specify the “brightness” of a 
 
 Our goal is therefore to make all lighting correct by default, while giving artists enough freedom to achieve the desired look. We will support a number of lights, split in two categories, direct and indirect lighting:
 
-Deferred rendering is used by many modern 3D rendering engines to easily support dozens, hundreds or even thousands of light source (amongst other benefits). This method is unfortunately very expensive in terms of bandwidth. With our default PBR material model, our G-buffer would use between 160 and 192 bits per pixel, which would translate directly to rather high bandwidth requirements.
-Forward rendering methods on the other hand have historically been bad at handling multiple lights. A common implementation is to render the scene multiple times, once per visible light, and to blend (add) the results. Another technique consists in assigning a fixed maximum of lights to each object in the scene. This is however impractical when objects occupy a vast amount of space in the world (building, road, etc.).
+Deferred rendering is used by many modern 3D rendering engines to easily support dozens, hundreds or even thousands of light source (amongst other benefits). This method is unfortunately very expensive in terms of bandwidth. With our default PBR material model, our G-buffer would use between 160 and 192 bits per pixel, which would translate directly to rather high bandwidth requirements. Forward rendering methods on the other hand have historically been bad at handling multiple lights. A common implementation is to render the scene multiple times, once per visible light, and to blend (add) the results. Another technique consists in assigning a fixed maximum of lights to each object in the scene. This is however impractical when objects occupy a vast amount of space in the world (building, road, etc.).
 
 Tiled shading can be applied to both forward and deferred rendering methods."""
 //endregion
 
-data class TextLine(val paragraph: String, val start: Int, val end: Int, val x: Float, val y: Float)
+data class TextLine(
+    val paragraph: String,
+    val start: Int,
+    val end: Int,
+    val hyphenStart: Int,
+    val hyphenEnd: Int,
+    val justifyWidth: Float,
+    val x: Float,
+    val y: Float
+)
 
 class ComboBreakerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -111,14 +120,14 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                 FlowType.Right
             ),
             FlowShape(
-                bitmap2.toContour(margin = 2.0f * density).asComposePath(),
-                FlowType.Left
+                bitmap2.toContour(margin = 8.0f * density).asComposePath(),
+                FlowType.Both
             )
         )
     }
 
     val linePosition = remember { mutableStateOf(Float.NaN) }
-    val paint = Paint().apply { textSize = 32.0f }
+    val paint = TextPaint().apply { textSize = 32.0f }
     val lineHeight = paint.fontMetrics.descent - paint.fontMetrics.ascent
     val textLines = mutableListOf<TextLine>()
 
@@ -130,7 +139,12 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                     translate(Offset(-bitmap1.width / 4.5f, 0.0f))
                 }
                 flowShapes[1].path.apply {
-                    translate(Offset((size.width - bitmap2.width).toFloat(), size.height / 2.0f))
+                    translate(
+                        Offset(
+                            (size.width - bitmap2.width).toFloat() / 2.0f,
+                            size.height / 1.9f
+                        )
+                    )
                 }
 
                 val clip = Path().apply {
@@ -196,7 +210,7 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                     )
                     drawImage(
                         bitmap2.asImageBitmap(),
-                        topLeft = Offset(size.width - bitmap2.width, size.height / 2.0f)
+                        topLeft = Offset((size.width - bitmap2.width) / 2.0f, size.height / 1.9f)
                     )
 
                     if (linePosition.value.isFinite()) {
@@ -250,6 +264,9 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                     drawIntoCanvas { canvas ->
                         val c = canvas.nativeCanvas
                         for (line in textLines) {
+                            paint.startHyphenEdit = line.hyphenStart
+                            paint.endHyphenEdit = line.hyphenEnd
+                            paint.wordSpacing = line.justifyWidth
                             c.drawText(line.paragraph, line.start, line.end, line.x, line.y, paint)
                         }
                     }
@@ -261,6 +278,22 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                 }
             }
     )
+}
+
+private fun isLineEndSpace(c: Char) =
+    c == ' ' || c == '\t' || c == Char(0x1680) ||
+    (Char(0x2000) <= c && c <= Char(0x200A) && c != Char(0x2007)) ||
+    c == Char(0x205F) || c == Char(0x3000)
+
+@Suppress("SameParameterValue")
+private fun countStretchableSpaces(text: String, start: Int, end: Int): Int {
+    var count = 0
+    for (i in start until end) {
+        if (text[i + start] == Char(0x0020)) {
+            count++
+        }
+    }
+    return count
 }
 
 private fun layoutText(
@@ -275,8 +308,8 @@ private fun layoutText(
 
     val lineBreaker = LineBreaker.Builder()
         .setBreakStrategy(LineBreaker.BREAK_STRATEGY_HIGH_QUALITY)
-        .setHyphenationFrequency(LineBreaker.HYPHENATION_FREQUENCY_NONE)
-        .setJustificationMode(LineBreaker.JUSTIFICATION_MODE_NONE)
+        .setHyphenationFrequency(LineBreaker.HYPHENATION_FREQUENCY_FULL)
+        .setJustificationMode(LineBreaker.JUSTIFICATION_MODE_INTER_WORD)
         .build()
     val constraints = LineBreaker.ParagraphConstraints()
 
@@ -314,10 +347,10 @@ private fun layoutText(
                 val subtext = paragraph.substring(breakOffset)
                 val measuredText = MeasuredText.Builder(subtext.toCharArray())
                     .appendStyleRun(paint, subtext.length, false)
+                    .setComputeHyphenation(MeasuredText.Builder.HYPHENATION_MODE_NORMAL)
                     .build()
-                val result = lineBreaker.computeLineBreaks(measuredText, constraints, 0)
 
-                if (result.getLineWidth(0) > constraints.width) continue
+                val result = lineBreaker.computeLineBreaks(measuredText, constraints, 0)
 
                 ascent = -result.getLineAscent(0)
                 descent = result.getLineDescent(0)
@@ -328,7 +361,33 @@ private fun layoutText(
                 }
 
                 val lineOffset = result.getLineBreakOffset(0)
-                lines.add(TextLine(paragraph, breakOffset, breakOffset + lineOffset, x1, y))
+
+                var justifyWidth = 0.0f
+                if (lineOffset < subtext.length) {
+                    var endOffset = lineOffset
+                    while (endOffset > 0 && isLineEndSpace(subtext[endOffset - 1])) {
+                        endOffset--
+                    }
+
+                    val stretchableSpaces = countStretchableSpaces(subtext, 0, endOffset)
+                    if (stretchableSpaces != 0) {
+                        val width = measuredText.getWidth(0, endOffset)
+                        justifyWidth = (space.width() - width) / stretchableSpaces
+                    }
+                }
+
+                lines.add(
+                    TextLine(
+                        paragraph,
+                        breakOffset,
+                        breakOffset + lineOffset,
+                        result.getStartLineHyphenEdit(0),
+                        result.getEndLineHyphenEdit(0),
+                        justifyWidth,
+                        x1,
+                        y
+                    )
+                )
 
                 breakOffset += lineOffset
 
