@@ -145,7 +145,7 @@ fun ComboBreaker(
                     translate(
                         Offset(
                             (size.width - bitmap2.width).toFloat() / 2.0f,
-                            size.height / 1.9f
+                            size.height / 1.7f
                         )
                     )
                 }
@@ -213,7 +213,7 @@ fun ComboBreaker(
                     )
                     drawImage(
                         bitmap2.asImageBitmap(),
-                        topLeft = Offset((size.width - bitmap2.width) / 2.0f, size.height / 1.9f)
+                        topLeft = Offset((size.width - bitmap2.width) / 2.0f, size.height / 1.7f)
                     )
 
                     if (linePosition.value.isFinite()) {
