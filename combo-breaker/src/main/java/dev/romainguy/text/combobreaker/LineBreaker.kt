@@ -22,8 +22,8 @@ import androidx.core.graphics.PathSegment
 import kotlin.math.max
 import kotlin.math.min
 
-// Note: clears the results parameters
-fun availableSpaces(
+// TODO: results is only used for debugging, it could be removed
+fun findSpacesAroundShapes(
     box: RectF,
     flowShapes: List<FlowShape>,
     results: MutableList<Interval<PathSegment>>,

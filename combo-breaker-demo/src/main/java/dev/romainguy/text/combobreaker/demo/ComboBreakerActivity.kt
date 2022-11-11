@@ -59,7 +59,7 @@ import androidx.core.graphics.PathSegment
 import dev.romainguy.text.combobreaker.FlowShape
 import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.Interval
-import dev.romainguy.text.combobreaker.availableSpaces
+import dev.romainguy.text.combobreaker.findSpacesAroundShapes
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
 import dev.romainguy.text.combobreaker.toContour
 
@@ -197,7 +197,7 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                 val y2 = y + lineHeight / 2.0f
 
                 val results = mutableListOf<Interval<PathSegment>>()
-                val spaces = availableSpaces(
+                val spaces = findSpacesAroundShapes(
                     RectF(0.0f, y1, size.width, y2),
                     flowShapes,
                     results
@@ -280,22 +280,6 @@ fun ComboBreaker(modifier: Modifier, text: String) {
     )
 }
 
-private fun isLineEndSpace(c: Char) =
-    c == ' ' || c == '\t' || c == Char(0x1680) ||
-    (Char(0x2000) <= c && c <= Char(0x200A) && c != Char(0x2007)) ||
-    c == Char(0x205F) || c == Char(0x3000)
-
-@Suppress("SameParameterValue")
-private fun countStretchableSpaces(text: String, start: Int, end: Int): Int {
-    var count = 0
-    for (i in start until end) {
-        if (text[i + start] == Char(0x0020)) {
-            count++
-        }
-    }
-    return count
-}
-
 private fun layoutText(
     text: String,
     lineHeight: Float,
@@ -309,7 +293,7 @@ private fun layoutText(
     val lineBreaker = LineBreaker.Builder()
         .setBreakStrategy(LineBreaker.BREAK_STRATEGY_HIGH_QUALITY)
         .setHyphenationFrequency(LineBreaker.HYPHENATION_FREQUENCY_FULL)
-        .setJustificationMode(LineBreaker.JUSTIFICATION_MODE_INTER_WORD)
+        .setJustificationMode(LineBreaker.JUSTIFICATION_MODE_NONE)
         .build()
     val constraints = LineBreaker.ParagraphConstraints()
 
@@ -332,7 +316,7 @@ private fun layoutText(
         var first = true
 
         while (breakOffset < paragraph.length && y < size.height) {
-            val spaces = availableSpaces(
+            val spaces = findSpacesAroundShapes(
                 RectF(0.0f, y, size.width.toFloat(), y + lineHeight),
                 flowShapes,
                 results
@@ -343,6 +327,7 @@ private fun layoutText(
                 val x1 = space.left
                 val x2 = space.right
                 constraints.width = x2 - x1
+                constraints.setIndent(x2 - x1, Integer.MAX_VALUE)
 
                 val subtext = paragraph.substring(breakOffset)
                 val measuredText = MeasuredText.Builder(subtext.toCharArray())
@@ -352,6 +337,29 @@ private fun layoutText(
 
                 val result = lineBreaker.computeLineBreaks(measuredText, constraints, 0)
 
+                val startHyphen = result.getStartLineHyphenEdit(0)
+                val endHyphen = result.getEndLineHyphenEdit(0)
+                val lineOffset = result.getLineBreakOffset(0)
+                val lineWidth = result.getLineWidth(0)
+                val lineTooWide = lineWidth > constraints.width
+
+                var justifyWidth = 0.0f
+                if (lineOffset < subtext.length || lineTooWide) {
+                    val hasEndHyphen = endHyphen != 0
+                    val endOffset = if (hasEndHyphen) lineOffset else trimEndSpace(subtext, lineOffset)
+                    val stretchableSpaces = countStretchableSpaces(subtext, 0, endOffset)
+
+                    if (stretchableSpaces != 0) {
+                        var width = lineWidth
+                        if (!lineTooWide && !hasEndHyphen) {
+                            width = measuredText.getWidth(0, endOffset)
+                        }
+                        justifyWidth = (constraints.width - width) / stretchableSpaces
+                    } else if (lineTooWide) {
+                        continue
+                    }
+                }
+
                 ascent = -result.getLineAscent(0)
                 descent = result.getLineDescent(0)
 
@@ -360,29 +368,13 @@ private fun layoutText(
                     first = false
                 }
 
-                val lineOffset = result.getLineBreakOffset(0)
-
-                var justifyWidth = 0.0f
-                if (lineOffset < subtext.length) {
-                    var endOffset = lineOffset
-                    while (endOffset > 0 && isLineEndSpace(subtext[endOffset - 1])) {
-                        endOffset--
-                    }
-
-                    val stretchableSpaces = countStretchableSpaces(subtext, 0, endOffset)
-                    if (stretchableSpaces != 0) {
-                        val width = measuredText.getWidth(0, endOffset)
-                        justifyWidth = (space.width() - width) / stretchableSpaces
-                    }
-                }
-
                 lines.add(
                     TextLine(
                         paragraph,
                         breakOffset,
                         breakOffset + lineOffset,
-                        result.getStartLineHyphenEdit(0),
-                        result.getEndLineHyphenEdit(0),
+                        startHyphen,
+                        endHyphen,
                         justifyWidth,
                         x1,
                         y
@@ -396,6 +388,30 @@ private fun layoutText(
             y += descent
         }
     }
+}
+
+private fun isLineEndSpace(c: Char) =
+    c == ' ' || c == '\t' || c == Char(0x1680) ||
+    (Char(0x2000) <= c && c <= Char(0x200A) && c != Char(0x2007)) ||
+    c == Char(0x205F) || c == Char(0x3000)
+
+@Suppress("SameParameterValue")
+private fun countStretchableSpaces(text: String, start: Int, end: Int): Int {
+    var count = 0
+    for (i in start until end) {
+        if (text[i + start] == Char(0x0020)) {
+            count++
+        }
+    }
+    return count
+}
+
+private fun trimEndSpace(text: String, lineEndOffset: Int): Int {
+    var endOffset = lineEndOffset
+    while (endOffset > 0 && isLineEndSpace(text[endOffset - 1])) {
+        endOffset--
+    }
+    return endOffset
 }
 
 @Suppress("NOTHING_TO_INLINE")
