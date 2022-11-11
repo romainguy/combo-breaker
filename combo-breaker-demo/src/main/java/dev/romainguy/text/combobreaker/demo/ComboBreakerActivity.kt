@@ -59,7 +59,7 @@ import androidx.core.graphics.PathSegment
 import dev.romainguy.text.combobreaker.FlowShape
 import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.Interval
-import dev.romainguy.text.combobreaker.findSpacesAroundShapes
+import dev.romainguy.text.combobreaker.findFlowSlots
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
 import dev.romainguy.text.combobreaker.toContour
 
@@ -75,12 +75,12 @@ Deferred rendering is used by many modern 3D rendering engines to easily support
 Tiled shading can be applied to both forward and deferred rendering methods."""
 //endregion
 
-data class TextLine(
-    val paragraph: String,
+class TextLine(
+    val text: String,
     val start: Int,
     val end: Int,
-    val hyphenStart: Int,
-    val hyphenEnd: Int,
+    val startHyphen: Int,
+    val endHyphen: Int,
     val justifyWidth: Float,
     val x: Float,
     val y: Float
@@ -107,7 +107,10 @@ class ComboBreakerActivity : ComponentActivity() {
 }
 
 @Composable
-fun ComboBreaker(modifier: Modifier, text: String) {
+fun ComboBreaker(
+    modifier: Modifier,
+    text: String
+) {
     val resources = LocalContext.current.resources
     val density = LocalDensity.current.density
 
@@ -197,7 +200,7 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                 val y2 = y + lineHeight / 2.0f
 
                 val results = mutableListOf<Interval<PathSegment>>()
-                val spaces = findSpacesAroundShapes(
+                val slots = findFlowSlots(
                     RectF(0.0f, y1, size.width, y2),
                     flowShapes,
                     results
@@ -221,13 +224,14 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                         fun drawResults(results: List<Interval<PathSegment>>) {
                             results.forEach { interval ->
                                 val segment = interval.data
-                                checkNotNull(segment)
-                                drawLine(
-                                    color = segmentColor,
-                                    start = segment.start.toOffset(),
-                                    end = segment.end.toOffset(),
-                                    strokeWidth = 3.0f
-                                )
+                                if (segment != null) {
+                                    drawLine(
+                                        color = segmentColor,
+                                        start = segment.start.toOffset(),
+                                        end = segment.end.toOffset(),
+                                        strokeWidth = 3.0f
+                                    )
+                                }
                             }
                         }
 
@@ -239,11 +243,11 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                             size = Size(size.width, lineHeight)
                         )
 
-                        for (space in spaces) {
+                        for (slot in slots) {
                             drawRect(
                                 color = secondaryLineFill,
-                                topLeft = space.toOffset(),
-                                size = space.toSize()
+                                topLeft = slot.toOffset(),
+                                size = slot.toSize()
                             )
                         }
 
@@ -264,10 +268,10 @@ fun ComboBreaker(modifier: Modifier, text: String) {
                     drawIntoCanvas { canvas ->
                         val c = canvas.nativeCanvas
                         for (line in textLines) {
-                            paint.startHyphenEdit = line.hyphenStart
-                            paint.endHyphenEdit = line.hyphenEnd
+                            paint.startHyphenEdit = line.startHyphen
+                            paint.endHyphenEdit = line.endHyphen
                             paint.wordSpacing = line.justifyWidth
-                            c.drawText(line.paragraph, line.start, line.end, line.x, line.y, paint)
+                            c.drawText(line.text, line.start, line.end, line.x, line.y, paint)
                         }
                     }
                 }
@@ -309,23 +313,27 @@ private fun layoutText(
     text.split('\n').forEach { paragraph ->
         var breakOffset = 0
 
-        if (paragraph.isEmpty()) y += lineHeight
+        if (paragraph.isEmpty()) {
+            y += lineHeight
+            return@forEach
+        }
 
         var ascent = 0.0f
         var descent = 0.0f
         var first = true
 
         while (breakOffset < paragraph.length && y < size.height) {
-            val spaces = findSpacesAroundShapes(
+            val slots = findFlowSlots(
                 RectF(0.0f, y, size.width.toFloat(), y + lineHeight),
                 flowShapes,
                 results
             )
 
             y += ascent
-            for (space in spaces) {
-                val x1 = space.left
-                val x2 = space.right
+
+            for (slot in slots) {
+                val x1 = slot.left
+                val x2 = slot.right
                 constraints.width = x2 - x1
                 constraints.setIndent(x2 - x1, Integer.MAX_VALUE)
 
@@ -385,6 +393,7 @@ private fun layoutText(
 
                 if (breakOffset >= paragraph.length || y >= size.height) break
             }
+
             y += descent
         }
     }

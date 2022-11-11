@@ -23,18 +23,18 @@ import kotlin.math.max
 import kotlin.math.min
 
 // TODO: results is only used for debugging, it could be removed
-fun findSpacesAroundShapes(
+fun findFlowSlots(
     box: RectF,
     flowShapes: List<FlowShape>,
     results: MutableList<Interval<PathSegment>>,
 ): List<RectF> {
     results.clear()
-    val spaces = mutableListOf<RectF>()
+    val slots = mutableListOf<RectF>()
 
     val searchInterval = Interval<PathSegment>(box.top, box.bottom)
     val intervals = mutableListOf<Interval<PathSegment>>()
 
-    val newSpaces = mutableListOf<RectF>()
+    val newSlots = mutableListOf<RectF>()
 
     val p1 = PointF()
     val p2 = PointF()
@@ -69,28 +69,28 @@ fun findSpacesAroundShapes(
             }
         }
 
-        newSpaces.clear()
+        newSlots.clear()
 
         if (flowShape.flowType.isLeftFlow && areaMin != Float.POSITIVE_INFINITY) {
-            findNewSpaces(box.left, box.top, areaMin, box.bottom, spaces, newSpaces)
+            addReducedSlots(box.left, box.top, areaMin, box.bottom, slots, newSlots)
         }
 
         if (flowShape.flowType.isRightFlow && areaMax != Float.NEGATIVE_INFINITY) {
-            findNewSpaces(areaMax, box.top, box.right, box.bottom, spaces, newSpaces)
+            addReducedSlots(areaMax, box.top, box.right, box.bottom, slots, newSlots)
         }
 
-        spaces.addAll(newSpaces)
+        slots.addAll(newSlots)
         results.addAll(intervals)
     }
 
-    if (spaces.size == 0) {
-        spaces.add(box)
+    if (slots.size == 0) {
+        slots.add(box)
     }
 
-    return spaces
+    return slots
 }
 
-private fun findNewSpaces(
+private fun addReducedSlots(
     left: Float,
     top: Float,
     right: Float,
