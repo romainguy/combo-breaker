@@ -8,10 +8,12 @@ group = GROUP
 version = VERSION_NAME
 
 android {
+    namespace 'dev.romainguy.text.combobreaker'
+
     compileSdk 33
 
     defaultConfig {
-        minSdk 21
+        minSdk 33
         targetSdk 33
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -25,7 +27,14 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
-    namespace 'dev.romainguy.text.combobreaker'
+
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion compose_compiler_version
+    }
 }
 
 dependencies {
@@ -33,6 +42,7 @@ dependencies {
 
     implementation platform("androidx.compose:compose-bom:$compose_bom")
     implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.material3:material3'
 
     androidTestImplementation 'androidx.test:runner:1.4.0'
     androidTestImplementation 'androidx.test:rules:1.4.0'

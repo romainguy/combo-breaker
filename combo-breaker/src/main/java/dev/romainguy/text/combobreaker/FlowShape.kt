@@ -19,24 +19,9 @@ package dev.romainguy.text.combobreaker
 import androidx.compose.ui.graphics.Path
 import androidx.core.graphics.PathSegment
 
-enum class FlowType(private val bits: Int) {
-    Left(1),
-    Right(2),
-    Both(3),
-    None(0);
-
-    internal val isLeftFlow: Boolean
-        get() { return (bits and 0x1) != 0 }
-
-    internal val isRightFlow: Boolean
-        get() { return (bits and 0x2) != 0 }
-}
-
-class FlowShape(val path: Path, val flowType: FlowType = FlowType.Both) {
+internal class FlowShape(val path: Path, val flowType: FlowType = FlowType.Both) {
     internal val intervals = IntervalTree<PathSegment>()
 
-    // TODO: Find a better way; the caller shouldn't have to invoke this
-    // TODO: At least, make it internal
     fun computeIntervals() {
         intervals.clear()
         path.toIntervals(intervals)

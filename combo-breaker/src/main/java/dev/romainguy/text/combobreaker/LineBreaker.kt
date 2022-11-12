@@ -22,13 +22,10 @@ import androidx.core.graphics.PathSegment
 import kotlin.math.max
 import kotlin.math.min
 
-// TODO: results is only used for debugging, it could be removed
-fun findFlowSlots(
+internal fun findFlowSlots(
     box: RectF,
-    flowShapes: List<FlowShape>,
-    results: MutableList<Interval<PathSegment>>,
+    flowShapes: ArrayList<FlowShape>
 ): List<RectF> {
-    results.clear()
     val slots = mutableListOf<RectF>()
 
     val searchInterval = Interval<PathSegment>(box.top, box.bottom)
@@ -80,7 +77,6 @@ fun findFlowSlots(
         }
 
         slots.addAll(newSlots)
-        results.addAll(intervals)
     }
 
     if (slots.size == 0) {
