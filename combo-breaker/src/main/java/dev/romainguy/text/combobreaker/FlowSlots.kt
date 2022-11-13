@@ -97,6 +97,8 @@ private fun addReducedSlots(
     spaces: MutableList<RectF>,
     newSpaces: MutableList<RectF>
 ) {
+    if (left == right) return
+
     if (spaces.size == 0) {
         newSpaces.add(RectF(left, top, right, bottom))
         return
@@ -112,7 +114,7 @@ private fun addReducedSlots(
         space.intersect(left, top, right, bottom)
 
         if (candidate != space) {
-            newSpaces.add(candidate)
+            if (!candidate.isEmpty) newSpaces.add(candidate)
             break
         }
     }

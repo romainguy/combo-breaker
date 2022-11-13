@@ -74,7 +74,7 @@ class ComboBreakerActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    val showDebugOverlay = remember { mutableStateOf(false) }
+                    val showDebugOverlay = remember { mutableStateOf(true) }
 
                     TextFlow(
                         SampleText,
