@@ -100,6 +100,9 @@ internal fun layoutTextFlow(
                 val lineWidth = result.getLineWidth(0)
                 val lineTooWide = lineWidth > constraints.width
 
+                ascent = -result.getLineAscent(0)
+                descent = result.getLineDescent(0)
+
                 var justifyWidth = 0.0f
                 if (lineOffset < subtext.length || lineTooWide) {
                     val hasEndHyphen = endHyphen != 0
@@ -116,9 +119,6 @@ internal fun layoutTextFlow(
                         continue
                     }
                 }
-
-                ascent = -result.getLineAscent(0)
-                descent = result.getLineDescent(0)
 
                 if (first) {
                     y += ascent

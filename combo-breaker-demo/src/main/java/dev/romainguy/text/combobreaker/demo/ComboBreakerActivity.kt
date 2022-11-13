@@ -91,7 +91,7 @@ class ComboBreakerActivity : ComponentActivity() {
 //                            bitmap = bitmap4.asImageBitmap(),
 //                            contentDescription = "",
 //                            modifier = Modifier
-//                                .align(Alignment.Center)
+//                                .align(Alignment.TopEnd)
 //                                .flowShape(margin = 8.dp)
 //                        )
                         val offset1 = Offset(-bitmap1.width / 4.5f, 0.0f)
