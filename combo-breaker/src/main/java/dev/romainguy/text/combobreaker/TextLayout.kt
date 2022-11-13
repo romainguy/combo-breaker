@@ -34,7 +34,7 @@ internal class TextLine(
     val paint: TextPaint
 )
 
-internal fun layoutText(
+internal fun layoutTextFlow(
     text: String,
     size: IntSize,
     paint: TextPaint,
@@ -151,8 +151,8 @@ internal fun layoutText(
 
 private fun isLineEndSpace(c: Char) =
     c == ' ' || c == '\t' || c == Char(0x1680) ||
-            (Char(0x2000) <= c && c <= Char(0x200A) && c != Char(0x2007)) ||
-            c == Char(0x205F) || c == Char(0x3000)
+    (Char(0x2000) <= c && c <= Char(0x200A) && c != Char(0x2007)) ||
+    c == Char(0x205F) || c == Char(0x3000)
 
 @Suppress("SameParameterValue")
 private fun countStretchableSpaces(text: String, start: Int, end: Int): Int {

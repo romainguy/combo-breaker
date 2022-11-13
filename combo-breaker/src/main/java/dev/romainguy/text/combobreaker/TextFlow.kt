@@ -21,6 +21,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.TextPaint
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.LayoutScopeMarker
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -170,7 +171,7 @@ fun TextFlow(
             }
 
             textLines.clear()
-            layoutText(text, selfSize, textPaint, textLines, flowShapes)
+            layoutTextFlow(text, selfSize, textPaint, textLines, flowShapes)
 
             // We don't need to keep all this data when the overlay isn't present
             if (!debugOverlay) flowShapes.clear()
@@ -259,6 +260,13 @@ private fun buildFlowShape(
     density: Density
 ) {
     val textFlowData = measurable.textFlowData ?: DefaultTextFlowParentData
+
+    // We ignore flow shapes marked "None". We could run all the code below and it
+    // would work just fine since findFlowSlots() will do the right thing, but
+    // it would be expensive and wasteful so let's not do that
+    if (textFlowData.flowType == FlowType.None) {
+        return
+    }
 
     val path = Path()
     val sourcePath = textFlowData.flowShape(position, size, boxSize)
@@ -359,6 +367,7 @@ typealias FlowShapeProvider = (position: IntOffset, size: IntSize, textFlowSize:
 /**
  * A TextFlowScope provides a scope for the children of [TextFlow].
  */
+@LayoutScopeMarker
 @Immutable
 interface TextFlowScope {
     /**

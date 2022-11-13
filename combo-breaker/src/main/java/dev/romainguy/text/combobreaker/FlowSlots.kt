@@ -40,7 +40,6 @@ internal fun findFlowSlots(
 
     results?.clear()
 
-    // NOTE: Save a few allocations by using manually indexed loops. Unfortunately.
     val flowShapeCount = flowShapes.size
     for (i in 0 until flowShapeCount) {
         val flowShape = flowShapes[i]

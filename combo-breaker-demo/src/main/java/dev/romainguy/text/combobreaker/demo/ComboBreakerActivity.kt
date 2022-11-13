@@ -21,11 +21,16 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,10 +74,13 @@ class ComboBreakerActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface
                 ) {
+                    val showDebugOverlay = remember { mutableStateOf(false) }
+
                     TextFlow(
                         SampleText,
                         modifier = Modifier.padding(16.dp),
-                        style = TextStyle(fontSize = 14.sp)
+                        style = TextStyle(fontSize = 14.sp),
+                        debugOverlay = showDebugOverlay.value
                     ) {
 //                        Image(
 //                            bitmap = bitmap3.asImageBitmap(),
@@ -119,6 +127,19 @@ class ComboBreakerActivity : ComponentActivity() {
                                         }
                                 }
                         )
+
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .height(40.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = showDebugOverlay.value,
+                                onCheckedChange = { showDebugOverlay.value = it },
+                            )
+                            Text(text = "Debug overlay")
+                        }
                     }
                 }
             }
