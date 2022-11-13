@@ -16,6 +16,10 @@
 
 package dev.romainguy.text.combobreaker
 
+import android.graphics.PointF
+import android.graphics.RectF
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.core.graphics.PathSegment
@@ -39,3 +43,12 @@ internal fun Path.toIntervals(
 
     return intervals
 }
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun PointF.toOffset() = Offset(x, y)
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun RectF.toOffset() = Offset(left, top)
+
+@Suppress("NOTHING_TO_INLINE")
+internal inline fun RectF.toSize() = Size(width(), height())

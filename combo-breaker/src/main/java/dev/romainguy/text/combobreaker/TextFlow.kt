@@ -17,22 +17,33 @@
 package dev.romainguy.text.combobreaker
 
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.TextPaint
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasurePolicy
@@ -55,8 +66,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toOffset
 import androidx.compose.ui.unit.toSize
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.contract
+import androidx.core.graphics.PathSegment
 import kotlin.math.max
 
 enum class FlowType(private val bits: Int) {
@@ -79,6 +89,7 @@ fun TextFlow(
     style: TextStyle = LocalTextStyle.current,
     contentAlignment: Alignment = Alignment.TopStart,
     propagateMinConstraints: Boolean = false,
+    debugOverlay: Boolean = false,
     content: @Composable TextFlowScope.() -> Unit
 ) {
     val context = LocalContext.current
@@ -87,7 +98,11 @@ fun TextFlow(
     val fontFamilyResolver = remember { createFontFamilyResolver(context) }
     val textPaint = rememberTextPaint(fontFamilyResolver, style, density)
     val textLines = remember { mutableListOf<TextLine>() }
+    val flowShapes = remember { ArrayList<FlowShape>() }
 
+    val debugLinePosition = remember { mutableStateOf(Float.NaN) }
+
+    // TODO: We should remember this. Figure out the keys
     val measurePolicy = MeasurePolicy { measurables, constraints ->
         val contentConstraints = if (propagateMinConstraints) {
             constraints
@@ -96,17 +111,20 @@ fun TextFlow(
         }
 
         val placeables = arrayOfNulls<Placeable>(measurables.size)
-        val flowShapes = ArrayList<FlowShape>(measurables.size)
+
+        flowShapes.clear()
+        flowShapes.ensureCapacity(measurables.size)
 
         var hasMatchParentSizeChildren = false
-        var boxWidth = constraints.minWidth
-        var boxHeight = constraints.minHeight
+        var selfWidth = constraints.minWidth
+        var selfHeight = constraints.minHeight
+
         measurables.fastForEachIndexed { index, measurable ->
             if (!measurable.matchesParentSize) {
                 val placeable = measurable.measure(contentConstraints)
                 placeables[index] = placeable
-                boxWidth = max(boxWidth, placeable.width)
-                boxHeight = max(boxHeight, placeable.height)
+                selfWidth = max(selfWidth, placeable.width)
+                selfHeight = max(selfHeight, placeable.height)
             } else {
                 hasMatchParentSizeChildren = true
             }
@@ -114,10 +132,10 @@ fun TextFlow(
 
         if (hasMatchParentSizeChildren) {
             val matchParentSizeConstraints = Constraints(
-                minWidth = if (boxWidth != Constraints.Infinity) boxWidth else 0,
-                minHeight = if (boxHeight != Constraints.Infinity) boxHeight else 0,
-                maxWidth = boxWidth,
-                maxHeight = boxHeight
+                minWidth = if (selfWidth != Constraints.Infinity) selfWidth else 0,
+                minHeight = if (selfHeight != Constraints.Infinity) selfHeight else 0,
+                maxWidth = selfWidth,
+                maxHeight = selfHeight
             )
             measurables.fastForEachIndexed { index, measurable ->
                 if (measurable.matchesParentSize) {
@@ -126,10 +144,11 @@ fun TextFlow(
             }
         }
 
-        val boxSize = IntSize(boxWidth, boxHeight)
-        layout(boxWidth, boxHeight) {
+        val selfSize = IntSize(selfWidth, selfHeight)
+
+        layout(selfWidth, selfHeight) {
             val clip = Path().apply {
-                addRect(Rect(0.0f, 0.0f, boxWidth.toFloat(), boxHeight.toFloat()))
+                addRect(Rect(0.0f, 0.0f, selfWidth.toFloat(), selfHeight.toFloat()))
             }
 
             placeables.forEachIndexed { index, placeable ->
@@ -144,13 +163,17 @@ fun TextFlow(
                     size,
                     layoutDirection,
                     contentAlignment,
-                    boxSize
+                    selfSize
                 )
 
-                buildFlowShape(measurable, position, size, boxSize, clip, flowShapes, density)
+                buildFlowShape(measurable, position, size, selfSize, clip, flowShapes, density)
             }
 
-            layoutText(text, boxSize, textPaint, textLines, flowShapes)
+            textLines.clear()
+            layoutText(text, selfSize, textPaint, textLines, flowShapes)
+
+            // We don't need to keep all this data when the overlay isn't present
+            if (!debugOverlay) flowShapes.clear()
         }
     }
 
@@ -166,6 +189,36 @@ fun TextFlow(
                         line.paint.endHyphenEdit = line.endHyphen
                         line.paint.wordSpacing = line.justifyWidth
                         c.drawText(line.text, line.start, line.end, line.x, line.y, line.paint)
+                    }
+                }
+            }
+            .thenIf(debugOverlay) {
+                drawWithCache {
+                    val stripeFill = stripeFill()
+
+                    val lineHeight = textPaint.fontMetrics.descent - textPaint.fontMetrics.ascent
+                    val y = debugLinePosition.value
+                    val y1 = y - lineHeight / 2.0f
+                    val y2 = y + lineHeight / 2.0f
+
+                    val results = mutableListOf<Interval<PathSegment>>()
+                    val slots = findFlowSlots(
+                        RectF(0.0f, y1, size.width, y2),
+                        flowShapes,
+                        results
+                    )
+
+                    onDrawWithContent {
+                        drawContent()
+
+                        if (debugLinePosition.value.isFinite()) {
+                            drawDebugInfo(y1, y2, flowShapes, results, slots, stripeFill)
+                        }
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, _ ->
+                        debugLinePosition.value = change.position.y
                     }
                 }
             }
@@ -246,6 +299,59 @@ private fun Placeable.PlacementScope.placeElement(
     )
     placeable.place(position)
     return position
+}
+
+private fun ContentDrawScope.drawDebugInfo(
+    y1: Float,
+    y2: Float,
+    flowShapes: ArrayList<FlowShape>,
+    intervals: MutableList<Interval<PathSegment>>,
+    slots: List<RectF>,
+    stripeFill: Brush
+) {
+    for (flowShape in flowShapes) {
+        drawPath(flowShape.path, stripeFill)
+    }
+
+    intervals.forEach { interval ->
+        val segment = interval.data
+        if (segment != null) {
+            drawLine(
+                color = DebugColors.SegmentColor,
+                start = segment.start.toOffset(),
+                end = segment.end.toOffset(),
+                strokeWidth = 3.0f
+            )
+        }
+    }
+
+    drawRect(
+        color = DebugColors.LineFill,
+        topLeft = Offset(0.0f, y1),
+        size = Size(size.width, y2 - y1)
+    )
+
+    for (slot in slots) {
+        drawRect(
+            color = DebugColors.SecondaryLineFill,
+            topLeft = slot.toOffset(),
+            size = slot.toSize()
+        )
+    }
+
+    drawLine(
+        color = DebugColors.LineBorder,
+        start = Offset(0.0f, y1),
+        end = Offset(size.width, y1),
+        strokeWidth = 3.0f
+    )
+
+    drawLine(
+        color = DebugColors.LineBorder,
+        start = Offset(0.0f, y2),
+        end = Offset(size.width, y2),
+        strokeWidth = 3.0f
+    )
 }
 
 typealias FlowShapeProvider = (position: IntOffset, size: IntSize, textFlowSize: IntSize) -> Path?
@@ -406,17 +512,29 @@ internal data class TextFlowParentData(
 
 internal val DefaultTextFlowParentData = TextFlowParentData()
 
-@OptIn(ExperimentalContracts::class)
-internal inline fun <T> List<T>.fastForEachIndexed(action: (Int, T) -> Unit) {
-    contract { callsInPlace(action) }
-    for (index in indices) {
-        val item = get(index)
-        action(index, item)
-    }
-}
-
 private class TypefaceDirtyTracker(resolveResult: State<Any>) {
     val initial = resolveResult.value
     val typeface: Typeface
         get() = initial as Typeface
 }
+
+private object DebugColors {
+    val SegmentColor = Color(0.941f, 0.384f, 0.573f, 1.0f)
+
+    val LineBorder = Color(0.412f, 0.863f, 1.0f, 1.0f)
+    val LineFill = Color(0.412f, 0.863f, 1.0f, 0.3f)
+
+    val SecondaryLineFill = Color(1.0f, 0.945f, 0.463f, 0.5f)
+
+    val StripeBackground = Color(0.98f, 0.98f, 0.98f)
+    val StripeForeground = Color(0.94f, 0.94f, 0.94f)
+}
+
+private fun Density.stripeFill() = Brush.linearGradient(
+    0.00f to DebugColors.StripeBackground, 0.25f to DebugColors.StripeBackground,
+    0.25f to DebugColors.StripeForeground, 0.75f to DebugColors.StripeForeground,
+    0.75f to DebugColors.StripeBackground, 1.00f to DebugColors.StripeBackground,
+    start = Offset.Zero,
+    end = Offset(8.dp.toPx(), 8.dp.toPx()),
+    tileMode = TileMode.Repeated
+)

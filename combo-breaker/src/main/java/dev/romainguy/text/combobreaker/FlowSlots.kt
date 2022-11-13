@@ -24,7 +24,8 @@ import kotlin.math.min
 
 internal fun findFlowSlots(
     box: RectF,
-    flowShapes: ArrayList<FlowShape>
+    flowShapes: ArrayList<FlowShape>,
+    results: MutableList<Interval<PathSegment>>? = null
 ): List<RectF> {
     val slots = mutableListOf<RectF>()
 
@@ -36,6 +37,8 @@ internal fun findFlowSlots(
     val p1 = PointF()
     val p2 = PointF()
     val scratch = PointF()
+
+    results?.clear()
 
     // NOTE: Save a few allocations by using manually indexed loops. Unfortunately.
     val flowShapeCount = flowShapes.size
@@ -77,6 +80,7 @@ internal fun findFlowSlots(
         }
 
         slots.addAll(newSlots)
+        results?.addAll(intervals)
     }
 
     if (slots.size == 0) {
