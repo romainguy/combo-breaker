@@ -19,7 +19,7 @@ package dev.romainguy.text.combobreaker
 import androidx.compose.ui.graphics.Path
 import androidx.core.graphics.PathSegment
 
-internal class FlowShape(val path: Path, val flowType: FlowType = FlowType.Both) {
+internal class FlowShape(val path: Path, val flowType: FlowType = FlowType.Outside) {
     internal val intervals = IntervalTree<PathSegment>()
     internal val bounds = path.getBounds()
 

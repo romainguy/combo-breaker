@@ -71,9 +71,9 @@ import androidx.core.graphics.PathSegment
 import kotlin.math.max
 
 enum class FlowType(private val bits: Int) {
-    Left(1),
-    Right(2),
-    Both(3),
+    OutsideLeft(1),
+    OutsideRight(2),
+    Outside(3),
     None(0);
 
     internal val isLeftFlow: Boolean
@@ -393,7 +393,7 @@ interface TextFlowScope {
      */
     @Stable
     fun Modifier.flowShape(
-        flowType: FlowType = FlowType.Both,
+        flowType: FlowType = FlowType.Outside,
         margin: Dp = 0.dp,
         flowShape: Path? = null
     ): Modifier
@@ -404,7 +404,7 @@ interface TextFlowScope {
     @Stable
     fun Modifier.flowShape(
         margin: Dp = 0.dp,
-        flowType: FlowType = FlowType.Both,
+        flowType: FlowType = FlowType.Outside,
         flowShape: FlowShapeProvider
     ): Modifier
 }
@@ -515,7 +515,7 @@ internal data class TextFlowParentData(
     var alignment: Alignment = Alignment.TopStart,
     var matchParentSize: Boolean = false,
     var margin: Dp = 0.dp,
-    var flowType: FlowType = FlowType.Both,
+    var flowType: FlowType = FlowType.Outside,
     var flowShape: FlowShapeProvider = { _, _, _ -> null }
 )
 

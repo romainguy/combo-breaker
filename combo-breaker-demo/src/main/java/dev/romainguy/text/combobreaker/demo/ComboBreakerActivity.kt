@@ -102,7 +102,7 @@ class ComboBreakerActivity : ComponentActivity() {
                             contentDescription = "",
                             modifier = Modifier
                                 .offset { offset1.round() }
-                                .flowShape(10.dp, FlowType.Right) { p, _, _ ->
+                                .flowShape(10.dp, FlowType.OutsideRight) { p, _, _ ->
                                     bitmap1
                                         .toContour(alphaThreshold = 0.1f)
                                         .asComposePath()
@@ -118,7 +118,7 @@ class ComboBreakerActivity : ComponentActivity() {
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .offset { offset2.round() }
-                                .flowShape(10.dp, FlowType.Both) { p, _, _ ->
+                                .flowShape(10.dp, FlowType.Outside) { p, _, _ ->
                                     bitmap2
                                         .toContour()
                                         .asComposePath()
