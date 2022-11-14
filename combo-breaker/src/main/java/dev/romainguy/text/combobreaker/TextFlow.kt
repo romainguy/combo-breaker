@@ -46,10 +46,13 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasurePolicy
+import androidx.compose.ui.layout.OnPlacedModifier
 import androidx.compose.ui.layout.ParentDataModifier
 import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -65,6 +68,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.round
 import androidx.compose.ui.unit.toOffset
 import androidx.compose.ui.unit.toSize
 import androidx.core.graphics.PathSegment
@@ -252,7 +256,7 @@ private fun rememberTextPaint(
 
 private fun buildFlowShape(
     measurable: Measurable,
-    position: IntOffset,
+    elementPosition: IntOffset,
     size: IntSize,
     boxSize: IntSize,
     clip: Path,
@@ -267,6 +271,8 @@ private fun buildFlowShape(
     if (textFlowData.flowType == FlowType.None) {
         return
     }
+
+    val position = if (textFlowData.position.isInvalid) elementPosition else textFlowData.position
 
     val path = Path()
     val sourcePath = textFlowData.flowShape(position, size, boxSize)
@@ -477,13 +483,20 @@ private class FlowShapeModifier(
     val margin: Dp,
     val flowType: FlowType,
     val flowShape: FlowShapeProvider
-) : ParentDataModifier {
+) : ParentDataModifier, OnPlacedModifier {
+    var localParentData: TextFlowParentData? = null
+
     override fun Density.modifyParentData(parentData: Any?): TextFlowParentData {
-        return ((parentData as? TextFlowParentData) ?: TextFlowParentData()).also {
+        localParentData = ((parentData as? TextFlowParentData) ?: TextFlowParentData()).also {
             it.margin = margin
             it.flowType = flowType
             it.flowShape = flowShape
         }
+        return localParentData!!
+    }
+
+    override fun onPlaced(coordinates: LayoutCoordinates) {
+        localParentData?.position = coordinates.positionInParent().round()
     }
 
     override fun equals(other: Any?): Boolean {
@@ -516,7 +529,8 @@ internal data class TextFlowParentData(
     var matchParentSize: Boolean = false,
     var margin: Dp = 0.dp,
     var flowType: FlowType = FlowType.Outside,
-    var flowShape: FlowShapeProvider = { _, _, _ -> null }
+    var flowShape: FlowShapeProvider = { _, _, _ -> null },
+    var position: IntOffset = IntOffset(Integer.MIN_VALUE, Integer.MIN_VALUE)
 )
 
 internal val DefaultTextFlowParentData = TextFlowParentData()
@@ -526,6 +540,8 @@ private class TypefaceDirtyTracker(resolveResult: State<Any>) {
     val typeface: Typeface
         get() = initial as Typeface
 }
+
+internal inline val IntOffset.isInvalid get() = x == Integer.MIN_VALUE || y == Int.MIN_VALUE
 
 private object DebugColors {
     val SegmentColor = Color(0.941f, 0.384f, 0.573f, 1.0f)

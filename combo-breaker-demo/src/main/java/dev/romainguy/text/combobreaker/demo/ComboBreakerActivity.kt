@@ -94,21 +94,17 @@ class ComboBreakerActivity : ComponentActivity() {
 //                                .align(Alignment.TopEnd)
 //                                .flowShape(margin = 8.dp)
 //                        )
-                        val offset1 = Offset(-bitmap1.width / 4.5f, 0.0f)
-                        val offset2 = Offset(0.0f, -bitmap2.height / 3.0f)
 
                         Image(
                             bitmap = bitmap1.asImageBitmap(),
                             contentDescription = "",
                             modifier = Modifier
-                                .offset { offset1.round() }
+                                .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
                                 .flowShape(10.dp, FlowType.OutsideRight) { p, _, _ ->
                                     bitmap1
                                         .toContour(alphaThreshold = 0.1f)
                                         .asComposePath()
-                                        .apply {
-                                            translate(p.toOffset() + offset1)
-                                        }
+                                        .apply { translate(p.toOffset()) }
                                 }
                         )
 
@@ -117,14 +113,12 @@ class ComboBreakerActivity : ComponentActivity() {
                             contentDescription = "",
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
-                                .offset { offset2.round() }
+                                .offset { Offset(0.0f, -bitmap2.height / 3.0f).round() }
                                 .flowShape(10.dp, FlowType.Outside) { p, _, _ ->
                                     bitmap2
                                         .toContour()
                                         .asComposePath()
-                                        .apply {
-                                            translate(p.toOffset() + offset2)
-                                        }
+                                        .apply { translate(p.toOffset()) }
                                 }
                         )
 
