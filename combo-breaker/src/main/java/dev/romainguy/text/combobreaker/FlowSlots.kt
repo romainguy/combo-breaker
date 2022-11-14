@@ -38,13 +38,11 @@ internal fun findFlowSlots(
     val p2 = PointF()
     val scratch = PointF()
 
-    results?.clear()
-
     val flowShapeCount = flowShapes.size
     for (i in 0 until flowShapeCount) {
         val flowShape = flowShapes[i]
 
-        if (flowShape.flowType == FlowType.None) continue
+        if (quickReject(box.top, box.bottom, flowShape)) continue
 
         intervals.clear()
         flowShape.intervals.findOverlaps(searchInterval, intervals)
@@ -119,3 +117,10 @@ private fun addReducedSlots(
         }
     }
 }
+
+
+@Suppress("NOTHING_TO_INLINE")
+private inline fun quickReject(top: Float, bottom: Float, flowShape: FlowShape) =
+    flowShape.flowType == FlowType.None ||
+    top > flowShape.bounds.bottom ||
+    bottom < flowShape.bounds.top

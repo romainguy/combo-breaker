@@ -21,6 +21,7 @@ import androidx.core.graphics.PathSegment
 
 internal class FlowShape(val path: Path, val flowType: FlowType = FlowType.Both) {
     internal val intervals = IntervalTree<PathSegment>()
+    internal val bounds = path.getBounds()
 
     fun computeIntervals() {
         intervals.clear()

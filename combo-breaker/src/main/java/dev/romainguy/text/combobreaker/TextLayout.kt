@@ -41,8 +41,6 @@ internal fun layoutTextFlow(
     lines: MutableList<TextLine>,
     flowShapes: ArrayList<FlowShape>
 ) {
-    lines.clear()
-
     val lineBreaker = LineBreaker.Builder()
         .setBreakStrategy(LineBreaker.BREAK_STRATEGY_HIGH_QUALITY)
         .setHyphenationFrequency(LineBreaker.HYPHENATION_FREQUENCY_FULL)
@@ -60,14 +58,14 @@ internal fun layoutTextFlow(
     // new strings. TextMeasurer will also measure all the lines even though we only care
     // about the first one, leading to a complexity of O(n^2) for each paragraph, where n
     // is the number of lines. Yikes.
-    text.split('\n').forEach { paragraph ->
-        var breakOffset = 0
-
+    val paragraphs = text.split('\n')
+    for (paragraph in paragraphs) {
         if (paragraph.isEmpty()) {
             y += lineHeight
-            return@forEach
+            continue
         }
 
+        var breakOffset = 0
         var ascent = 0.0f
         var descent = 0.0f
         var first = true
@@ -84,9 +82,11 @@ internal fun layoutTextFlow(
                 val x1 = slot.left
                 val x2 = slot.right
                 constraints.width = x2 - x1
-                constraints.setIndent(x2 - x1, Integer.MAX_VALUE)
 
                 val subtext = paragraph.substring(breakOffset)
+                // We could use toCharArray() with a pre-built array and offset, but
+                // MeasuredText.Build wants styles to cover the entire array, and
+                // LineBreaker therefore expects to compute breaks over the entire array
                 val measuredText = MeasuredText.Builder(subtext.toCharArray())
                     .appendStyleRun(paint, subtext.length, false)
                     .setComputeHyphenation(MeasuredText.Builder.HYPHENATION_MODE_NORMAL)
@@ -146,6 +146,8 @@ internal fun layoutTextFlow(
 
             y += descent
         }
+
+        if (y >= size.height) break
     }
 }
 
