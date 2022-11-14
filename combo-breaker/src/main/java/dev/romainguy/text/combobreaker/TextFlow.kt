@@ -453,12 +453,19 @@ private val Measurable.matchesParentSize: Boolean get() = textFlowData?.matchPar
 private class AlignmentAndSizeModifier(
     val alignment: Alignment,
     val matchParentSize: Boolean = false
-) : ParentDataModifier {
+) : ParentDataModifier, OnPlacedModifier {
+    var localParentData: TextFlowParentData? = null
+
     override fun Density.modifyParentData(parentData: Any?): TextFlowParentData {
-        return ((parentData as? TextFlowParentData) ?: TextFlowParentData()).also {
+        localParentData = ((parentData as? TextFlowParentData) ?: TextFlowParentData()).also {
             it.alignment = alignment
             it.matchParentSize = matchParentSize
         }
+        return localParentData!!
+    }
+
+    override fun onPlaced(coordinates: LayoutCoordinates) {
+        localParentData?.position = coordinates.positionInParent().round()
     }
 
     override fun equals(other: Any?): Boolean {
