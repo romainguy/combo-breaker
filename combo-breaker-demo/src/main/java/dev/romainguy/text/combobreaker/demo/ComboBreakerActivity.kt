@@ -16,6 +16,7 @@
 
 package dev.romainguy.text.combobreaker.demo
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -80,7 +81,11 @@ class ComboBreakerActivity : ComponentActivity() {
 
     @Composable
     private fun Page() {
-        val bitmap1 = remember { BitmapFactory.decodeResource(resources, R.drawable.microphone) }
+        val bitmap1 = remember {
+            BitmapFactory.decodeResource(resources, R.drawable.microphone).let {
+                Bitmap.createScaledBitmap(it, it.width / 2, it.height / 2, true)
+            }
+        }
         val bitmap2 = remember { BitmapFactory.decodeResource(resources, R.drawable.badge) }
         val bitmap3 = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape1) }
         val bitmap4 = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape2) }
@@ -92,6 +97,7 @@ class ComboBreakerActivity : ComponentActivity() {
                 SampleText,
                 modifier = Modifier.padding(16.dp),
                 style = TextStyle(fontSize = 14.sp),
+                columns = 2,
                 debugOverlay = showDebugOverlay.value
             ) {
 //                Image(
@@ -113,7 +119,7 @@ class ComboBreakerActivity : ComponentActivity() {
                     modifier = Modifier
                         .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
                         .flowShape(10.dp, FlowType.OutsideEnd) { _, _ ->
-                            bitmap1.toContour(alphaThreshold = 0.1f).asComposePath()
+                            bitmap1.toContour(alphaThreshold = 0.5f).asComposePath()
                         }
                 )
 

@@ -77,8 +77,8 @@ internal fun findFlowSlots(
         // the shape segments that intersect the box. This will tell us where
         // we can safely layout content to the left (min) and right (max) of
         // the shape
-        var shapeMin = Float.POSITIVE_INFINITY
-        var shapeMax = Float.NEGATIVE_INFINITY
+        var shapeMin = box.right
+        var shapeMax = box.left
 
         val intervalCount = intervals.size
         for (j in 0 until intervalCount) {
@@ -92,7 +92,7 @@ internal fun findFlowSlots(
             p1.set(segment.start)
             p2.set(segment.end)
 
-            if (clipSegment(p1, p2, box, scratch)) {
+            if (clipSegment(p1, p2, RectF(0.0f, box.top, Float.POSITIVE_INFINITY, box.bottom), scratch)) {
                 shapeMin = min(shapeMin, min(p1.x, p2.x))
                 shapeMax = max(shapeMax, max(p1.x, p2.x))
             }
@@ -236,11 +236,11 @@ private fun addReducedSlots(
         foundRightOverlap = foundRightOverlap || rightOverlap
     }
 
-    if (!foundLeftOverlap && isLeftFlow && left != min) {
+    if (!foundLeftOverlap && isLeftFlow && left < min) {
         slots.add(RectF(left, top, min, bottom))
     }
 
-    if (!foundRightOverlap && isRightFlow && max != right) {
+    if (!foundRightOverlap && isRightFlow && max < right) {
         slots.add(RectF(max, top, right, bottom))
     }
 }

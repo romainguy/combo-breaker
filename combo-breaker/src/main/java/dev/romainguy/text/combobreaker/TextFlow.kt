@@ -109,6 +109,8 @@ fun TextFlow(
     text: String,
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
+    columns: Int = 1,
+    columnSpacing: Dp = 16.dp,
     contentAlignment: Alignment = Alignment.TopStart,
     propagateMinConstraints: Boolean = false,
     debugOverlay: Boolean = false,
@@ -201,7 +203,17 @@ fun TextFlow(
             }
 
             textLines.clear()
-            layoutTextFlow(text, selfSize, textPaint, flowShapes, textLines)
+
+            layoutTextFlow(
+                text,
+                selfSize,
+                columns,
+                columnSpacing.toPx(),
+                layoutDirection,
+                textPaint,
+                flowShapes,
+                textLines
+            )
 
             // We don't need to keep all this data when the overlay isn't present
             if (!debugOverlay) flowShapes.clear()

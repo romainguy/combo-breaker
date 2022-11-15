@@ -21,6 +21,7 @@ import android.graphics.text.LineBreaker
 import android.graphics.text.MeasuredText
 import android.text.TextPaint
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 
 /**
  * Internal representation of a line of text computed by the text flow layout algorithm
@@ -65,6 +66,9 @@ internal class TextLine(
  * @param text The text to layout
  * @param size The size of the area where layout must occur. The resulting text will not
  * extend beyond those dimensions
+ * @param columns Number of columns of text to use in the given area
+ * @param columnSpacing Empty space between columns
+ * @param layoutDirection The RTL or LTR direction of the layout
  * @param paint The paint to use to measure and render the text
  * @param flowShapes The list of shapes to flow text around
  * @param lines List of lines where the resulting layout will be stored
@@ -72,6 +76,9 @@ internal class TextLine(
 internal fun layoutTextFlow(
     text: String,
     size: IntSize,
+    columns: Int,
+    columnSpacing: Float,
+    layoutDirection: LayoutDirection,
     paint: TextPaint,
     flowShapes: ArrayList<FlowShape>,
     lines: MutableList<TextLine>
@@ -86,152 +93,176 @@ internal fun layoutTextFlow(
     // TODO: Do this per span/paragraph
     val lineHeight = paint.fontMetrics.descent - paint.fontMetrics.ascent
 
-    // Cursor to indicate where to draw the next line of text
-    var y = 0.0f
+    var columnCount = columns.coerceIn(1, Int.MAX_VALUE)
+    var columnWidth = (size.width.toFloat() - (columns - 1) * columnSpacing) / columnCount
+    while (columnWidth <= 0.0f && columnCount > 0) {
+        columnCount--
+        columnWidth = (size.width.toFloat() - (columns - 1) * columnSpacing) / columnCount
+    }
 
-    // Here be dragons... This is extremely inefficient since we do (terrible) paragraph
-    // breaking ourselves, and rely on TextMeasurer which forces us to creates multiple
-    // new strings. TextMeasurer will also measure all the lines even though we only care
-    // about the first one, leading to a complexity of O(n^2) for each paragraph, where n
-    // is the number of lines. Yikes.
+    val ltr = layoutDirection == LayoutDirection.Ltr
+    val column = RectF(
+        if (ltr) 0.0f else size.width - columnWidth,
+        0.0f,
+        if (ltr) columnWidth else size.width.toFloat(),
+        size.height.toFloat()
+    )
+
+    var currentParagraph = 0
     val paragraphs = text.split('\n')
-    for (paragraph in paragraphs) {
-        // Skip empty paragraphs but advance the cursor to mark empty lines
-        if (paragraph.isEmpty()) {
-            y += lineHeight
-            continue
-        }
 
-        // Tracks the offset of the last break in the paragraph, this is where we want
-        // to start reading text for our next text line
-        var breakOffset = 0
+    // Tracks the offset of the last break in the paragraph, this is where we want
+    // to start reading text for our next text line
+    var breakOffset = 0
 
-        var ascent = 0.0f
-        var descent = 0.0f
+    for (c in 0 until columnCount) {
+        // Cursor to indicate where to draw the next line of text
+        var y = 0.0f
 
-        var first = true
+        while (currentParagraph < paragraphs.size) {
+            val paragraph = paragraphs[currentParagraph]
 
-        // We want to layout text until we've run out of characters in the current paragraph,
-        // or we've run out of space in the layout area
-        while (breakOffset < paragraph.length && y < size.height) {
-            // The first step is to find all the slots in which we could layout text for the
-            // current text line. We currently assume a line of text has a fixed height in
-            // a given paragraph.
-            // The result is a list of rectangles deemed appropriate to place text. These
-            // rectangles might however be too small to properly place text from the current
-            // line and may be skipped over later.
-            val slots = findFlowSlots(
-                RectF(0.0f, y, size.width.toFloat(), y + lineHeight),
-                flowShapes
-            )
-
-            // Position our cursor to the baseline of the next line, the first time this is
-            // a no-op since ascent is set to 0. We'll fix this below
-            y += ascent
-
-            // We now need to fit as much text as possible for the current paragraph in the list
-            // of slots we just computed
-            for (slot in slots) {
-                // Sets the constraints width to that of our current slot
-                val x1 = slot.left
-                val x2 = slot.right
-                constraints.width = x2 - x1
-
-                // Skip empty slots
-                if (constraints.width <= 0) continue
-
-                val subtext = paragraph.substring(breakOffset)
-                // We could use toCharArray() with a pre-built array and offset, but
-                // MeasuredText.Build wants styles to cover the entire array, and
-                // LineBreaker therefore expects to compute breaks over the entire array
-                val measuredText = MeasuredText.Builder(subtext.toCharArray())
-                    .appendStyleRun(paint, subtext.length, false)
-                    .setComputeHyphenation(MeasuredText.Builder.HYPHENATION_MODE_NORMAL)
-                    .build()
-
-                val result = lineBreaker.computeLineBreaks(measuredText, constraints, 0)
-
-                val startHyphen = result.getStartLineHyphenEdit(0)
-                val endHyphen = result.getEndLineHyphenEdit(0)
-                val lineOffset = result.getLineBreakOffset(0)
-                val lineWidth = result.getLineWidth(0)
-
-                // If this is true, LineBreaker tried too hard to put text in the current slot
-                // We'll first try to shrink the text and, if we can't, we'll skip the slot and
-                // move on to the next one
-                val lineTooWide = lineWidth > constraints.width
-
-                // Tells us how far to move the cursor for the next line of text
-                ascent = -result.getLineAscent(0)
-                descent = result.getLineDescent(0)
-
-                // Implement justification. We only justify when we are not laying out the last
-                // line of a paragraph (which looks horrible) or if the current line is too wide
-                // (which could be because LineBreaker entered desperate mode)
-                var justifyWidth = 0.0f
-                if (lineOffset < subtext.length || lineTooWide) {
-                    // Trim end spaces as needed and figure out how many stretchable spaces we
-                    // can work with to justify or fit our text in the slot
-                    val hasEndHyphen = endHyphen != 0
-                    val endOffset = if (hasEndHyphen) lineOffset else trimEndSpace(subtext, lineOffset)
-                    val stretchableSpaces = countStretchableSpaces(subtext, 0, endOffset)
-
-                    // If we found stretchable spaces, we can attempt justification/line shrinking,
-                    // otherwise, and if the line is too wide, we just bail and hope the next slot
-                    // will be large enough for us to work with
-                    if (stretchableSpaces != 0) {
-                        var width = lineWidth
-
-                        // When the line is too wide and we don't have a hyphen, LineBreaker was
-                        // "desperate" to fit the text, so we can't use its text measurement.
-                        // Instead we measure the width ourselves so we can shrink the line with
-                        // negative word spacing
-                        if (!lineTooWide && !hasEndHyphen) {
-                            width = measuredText.getWidth(0, endOffset)
-                        }
-
-                        // Compute the amount of spacing to give to each stretchable space
-                        // Can be positive (justification) or negative (line too wide)
-                        justifyWidth = (constraints.width - width) / stretchableSpaces
-                    } else if (lineTooWide) {
-                        continue
-                    }
-                }
-
-                // Correct ascent for the first line in the paragraph
-                if (first) {
-                    y += ascent
-                    first = false
-                }
-
-                // Enqueue a new text chunk
-                lines.add(
-                    TextLine(
-                        paragraph,
-                        breakOffset,
-                        breakOffset + lineOffset,
-                        startHyphen,
-                        endHyphen,
-                        justifyWidth,
-                        x1,
-                        y,
-                        paint
-                    )
-                )
-
-                // Increase our current offset in side the paragraph
-                breakOffset += lineOffset
-
-                // Early exit if we've run out of text or layout area
-                if (breakOffset >= paragraph.length || y >= size.height) break
+            // Skip empty paragraphs but advance the cursor to mark empty lines
+            if (paragraph.isEmpty()) {
+                y += lineHeight
+                currentParagraph++
+                continue
             }
 
-            // Move the cursor to the next line
-            y += descent
+            var ascent = 0.0f
+            var descent = 0.0f
+
+            var first = true
+
+            // We want to layout text until we've run out of characters in the current paragraph,
+            // or we've run out of space in the layout area
+            while (breakOffset < paragraph.length && y < column.height()) {
+                // The first step is to find all the slots in which we could layout text for the
+                // current text line. We currently assume a line of text has a fixed height in
+                // a given paragraph.
+                // The result is a list of rectangles deemed appropriate to place text. These
+                // rectangles might however be too small to properly place text from the current
+                // line and may be skipped over later.
+                val slots = findFlowSlots(
+                    RectF(column.left, y, column.right, y + lineHeight),
+                    flowShapes
+                )
+
+                // Position our cursor to the baseline of the next line, the first time this is
+                // a no-op since ascent is set to 0. We'll fix this below
+                y += ascent
+
+                // We now need to fit as much text as possible for the current paragraph in the list
+                // of slots we just computed
+                for (slot in slots) {
+                    // Sets the constraints width to that of our current slot
+                    val x1 = slot.left
+                    val x2 = slot.right
+                    constraints.width = x2 - x1
+
+                    // Skip empty slots
+                    if (constraints.width <= 0) continue
+
+                    val subtext = paragraph.substring(breakOffset)
+                    // We could use toCharArray() with a pre-built array and offset, but
+                    // MeasuredText.Build wants styles to cover the entire array, and
+                    // LineBreaker therefore expects to compute breaks over the entire array
+                    val measuredText = MeasuredText.Builder(subtext.toCharArray())
+                        .appendStyleRun(paint, subtext.length, false)
+                        .setComputeHyphenation(MeasuredText.Builder.HYPHENATION_MODE_NORMAL)
+                        .build()
+
+                    val result = lineBreaker.computeLineBreaks(measuredText, constraints, 0)
+
+                    val startHyphen = result.getStartLineHyphenEdit(0)
+                    val endHyphen = result.getEndLineHyphenEdit(0)
+                    val lineOffset = result.getLineBreakOffset(0)
+                    val lineWidth = result.getLineWidth(0)
+
+                    // If this is true, LineBreaker tried too hard to put text in the current slot
+                    // We'll first try to shrink the text and, if we can't, we'll skip the slot and
+                    // move on to the next one
+                    val lineTooWide = lineWidth > constraints.width
+
+                    // Tells us how far to move the cursor for the next line of text
+                    ascent = -result.getLineAscent(0)
+                    descent = result.getLineDescent(0)
+
+                    // Implement justification. We only justify when we are not laying out the last
+                    // line of a paragraph (which looks horrible) or if the current line is too wide
+                    // (which could be because LineBreaker entered desperate mode)
+                    var justifyWidth = 0.0f
+                    if (lineOffset < subtext.length || lineTooWide) {
+                        // Trim end spaces as needed and figure out how many stretchable spaces we
+                        // can work with to justify or fit our text in the slot
+                        val hasEndHyphen = endHyphen != 0
+                        val endOffset =
+                            if (hasEndHyphen) lineOffset else trimEndSpace(subtext, lineOffset)
+                        val stretchableSpaces = countStretchableSpaces(subtext, 0, endOffset)
+
+                        // If we found stretchable spaces, we can attempt justification/line
+                        // shrinking, otherwise, and if the line is too wide, we just bail and hope
+                        // the next slot will be large enough for us to work with
+                        if (stretchableSpaces != 0) {
+                            var width = lineWidth
+
+                            // When the line is too wide and we don't have a hyphen, LineBreaker was
+                            // "desperate" to fit the text, so we can't use its text measurement.
+                            // Instead we measure the width ourselves so we can shrink the line with
+                            // negative word spacing
+                            if (!lineTooWide && !hasEndHyphen) {
+                                width = measuredText.getWidth(0, endOffset)
+                            }
+
+                            // Compute the amount of spacing to give to each stretchable space
+                            // Can be positive (justification) or negative (line too wide)
+                            justifyWidth = (constraints.width - width) / stretchableSpaces
+                        } else if (lineTooWide) {
+                            continue
+                        }
+                    }
+
+                    // Correct ascent for the first line in the paragraph
+                    if (first) {
+                        y += ascent
+                        first = false
+                    }
+
+                    // Enqueue a new text chunk
+                    lines.add(
+                        TextLine(
+                            paragraph,
+                            breakOffset,
+                            breakOffset + lineOffset,
+                            startHyphen,
+                            endHyphen,
+                            justifyWidth,
+                            x1,
+                            y,
+                            paint
+                        )
+                    )
+
+                    // Increase our current offset in side the paragraph
+                    breakOffset += lineOffset
+
+                    if (breakOffset >= paragraph.length || y >= column.height()) break
+                }
+
+                // Move the cursor to the next line
+                y += descent
+            }
+
+            if (breakOffset >= paragraph.length) {
+                currentParagraph++
+                breakOffset = 0
+            }
+
+            // Early exit if we have more text than area
+            if (y >= column.height()) break
         }
 
-        // Early exit if we have more text than area
-        if (y >= size.height) break
+        column.offset((column.width() + columnSpacing) * if (ltr) 1.0f else -1.0f, 0.0f)
     }
 }
 
