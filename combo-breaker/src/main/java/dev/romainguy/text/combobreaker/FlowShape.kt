@@ -31,6 +31,7 @@ internal class FlowShape(
     internal val intervals = path.toIntervals()
     internal val bounds = path.getBounds()
 
+    // These fields are read-write and used during layout to hold temporary information
     internal var min = Float.POSITIVE_INFINITY
     internal var max = Float.NEGATIVE_INFINITY
 }
