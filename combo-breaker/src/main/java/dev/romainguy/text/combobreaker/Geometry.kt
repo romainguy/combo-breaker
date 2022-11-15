@@ -27,6 +27,12 @@ import androidx.core.graphics.flatten
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * Returns an [IntervalTree] for this path. Each [Interval] in that tree wraps a path segment
+ * generated from flattening the path. The interval itself is the vertical interval of a given
+ * segment. The resulting interval tree can be used to quickly query which segments intersect
+ * a given interval such as a line of a text.
+ */
 internal fun Path.toIntervals(
     intervals: IntervalTree<PathSegment> = IntervalTree()
 ): IntervalTree<PathSegment> {

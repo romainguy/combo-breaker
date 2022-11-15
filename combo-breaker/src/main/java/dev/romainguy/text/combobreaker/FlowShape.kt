@@ -18,6 +18,12 @@ package dev.romainguy.text.combobreaker
 
 import androidx.compose.ui.graphics.Path
 
+/**
+ * Internal representation of a "flow shape". A flow shape is a [Path] contour from which
+ * an interval tree is extracted. The intervals inside that tree are extracted by first flattening
+ * the path as a series of segments. By taking the vertical interval of each segment, we can
+ * build an interval tree that allows for fast queries when trying to layout a line of text.
+ */
 internal class FlowShape(
     val path: Path,
     val flowType: FlowType,

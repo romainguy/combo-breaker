@@ -140,7 +140,7 @@ class ComboBreakerActivity : ComponentActivity() {
                 ) {
                     Checkbox(
                         checked = showDebugOverlay.value,
-                        onCheckedChange = { showDebugOverlay.value = it },
+                        onCheckedChange = { showDebugOverlay.value = it }
                     )
                     Text(text = "Debug overlay")
                 }

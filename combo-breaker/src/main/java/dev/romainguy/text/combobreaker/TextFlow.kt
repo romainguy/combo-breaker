@@ -87,6 +87,9 @@ enum class FlowType(private val bits: Int) {
     internal val isRightFlow: Boolean
         get() { return (bits and 0x2) != 0 }
 
+    // Note: if we discarded the type and kept only the bit field when
+    // building the internal FlowShape, we could simply return -bits
+    // in RTL when bits < Outside.
     internal fun resolve(direction: LayoutDirection) = when (direction) {
         LayoutDirection.Ltr -> this
         LayoutDirection.Rtl -> when (this) {
@@ -197,7 +200,7 @@ fun TextFlow(
             }
 
             textLines.clear()
-            layoutTextFlow(text, selfSize, textPaint, textLines, flowShapes)
+            layoutTextFlow(text, selfSize, textPaint, flowShapes, textLines)
 
             // We don't need to keep all this data when the overlay isn't present
             if (!debugOverlay) flowShapes.clear()
@@ -221,7 +224,7 @@ fun TextFlow(
             }
             .thenIf(debugOverlay) {
                 drawWithCache {
-                    val stripeFill = stripeFill()
+                    val stripeFill = debugStripeFill()
 
                     val lineHeight = textPaint.fontMetrics.descent - textPaint.fontMetrics.ascent
                     val y = debugLinePosition.value
@@ -587,7 +590,7 @@ private object DebugColors {
     val StripeForeground = Color(0.94f, 0.94f, 0.94f)
 }
 
-private fun Density.stripeFill() = Brush.linearGradient(
+private fun Density.debugStripeFill() = Brush.linearGradient(
     0.00f to DebugColors.StripeBackground, 0.25f to DebugColors.StripeBackground,
     0.25f to DebugColors.StripeForeground, 0.75f to DebugColors.StripeForeground,
     0.75f to DebugColors.StripeBackground, 1.00f to DebugColors.StripeBackground,

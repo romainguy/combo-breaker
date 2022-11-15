@@ -92,11 +92,11 @@ private fun TextPaint.setBrush(brush: Brush?, size: Size, alpha: Float = Float.N
 }
 
 /**
- * Applies given SpanStyle to this AndroidTextPaint.
+ * Applies given [SpanStyle] to this [TextPaint].
  *
- * Although most attributes in SpanStyle can be applied to TextPaint, some are only applicable as
- * regular platform spans such as background, baselineShift. This function also returns a new
- * SpanStyle that consists of attributes that were not applied to the TextPaint.
+ * Although most attributes in [SpanStyle] can be applied to [TextPaint], some are only applicable
+ * as regular platform spans such as background, baselineShift. This function also returns a new
+ * [SpanStyle] that consists of attributes that were not applied to the [TextPaint].
  */
 @OptIn(ExperimentalTextApi::class)
 fun TextPaint.applySpanStyle(

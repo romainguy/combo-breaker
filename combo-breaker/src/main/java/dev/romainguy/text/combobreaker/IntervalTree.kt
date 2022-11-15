@@ -19,22 +19,50 @@ package dev.romainguy.text.combobreaker
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * Interval in an [IntervalTree]. The interval is defined between a [start] and an [end]
+ * coordinates, whose meanings are defined by the caller. An interval can also hold
+ * arbitrary [data] to be used to looking at the result of queries with
+ * [IntervalTree.findOverlaps].
+ */
 internal class Interval<T>(val start: Float, val end: Float, val data: T? = null) {
+    /**
+     * Returns trues if this interval overlaps with another interval.
+     */
     fun overlaps(other: Interval<T>) = start <= other.end && end >= other.start
 }
 
+/**
+ * An interval tree holds a list of intervals and allows for fast queries of intervals
+ * that overlap any given interval. This can be used for instance to perform fast spatial
+ * queries like finding all the segments in a path that overlap with a given vertical
+ * interval.
+ */
 internal class IntervalTree<T> {
+    // Note: this interval tree is implemented as a binary red/black tree that gets
+    // re-balanced on updates. There's nothing notable about this particular data
+    // structure beyond what can be found in various descriptions of binary search
+    // trees and red/black trees
+
     private val terminator = Node(
         Interval(Float.MAX_VALUE, Float.MIN_VALUE, null),
         TreeColor.Black
     )
     private var root = terminator
 
-    fun clear() {
+    /**
+     * Clears this tree and prepares it for reuse. After calling [clear], any call to
+     * [findOverlaps] returns false.
+     */
+    internal fun clear() {
         root = terminator
     }
 
-    fun findOverlaps(
+    /**
+     * Finds all the intervals that overlap with the specified [interval]. If [results]
+     * is specified, [results] is returned, otherwise a new [MutableList] is returned.
+     */
+    internal fun findOverlaps(
         interval: Interval<T>,
         results: MutableList<Interval<T>> = mutableListOf()
     ): MutableList<Interval<T>> {
@@ -58,6 +86,9 @@ internal class IntervalTree<T> {
         }
     }
 
+    /**
+     * Adds the specified [Interval] to the interval tree.
+     */
     operator fun plusAssign(interval: Interval<T>) {
         val node = Node(interval)
 

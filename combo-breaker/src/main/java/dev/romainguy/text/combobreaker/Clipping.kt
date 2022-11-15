@@ -20,38 +20,54 @@ import android.graphics.PointF
 import android.graphics.RectF
 import kotlin.math.abs
 
-private const val ClipInside = 0
+// Clipping flags indicating where clipping must occur
+private const val ClipNone = 0
 private const val ClipTop = 1
 private const val ClipBottom = 2
 private const val ClipLeft = 4
 private const val ClipRight = 8
 
-internal fun clipSegment(p1: PointF, p2: PointF, r: RectF, out: PointF): Boolean {
+/**
+ * Clips the segment described by [p1] and [p2] against the rectangle [r]. This function
+ * modifies the two points [p1] and [p2] directly. The [scratch] parameter is used as a temporary
+ * allocation.
+ *
+ * @return True if the segment intersects with or is inside [r], false otherwise
+ */
+internal fun clipSegment(p1: PointF, p2: PointF, r: RectF, scratch: PointF): Boolean {
+    // Find the types of clipping required
     var clip1 = clipType(p1, r)
     var clip2 = clipType(p2, r)
 
     while (true) {
-        if ((clip1 or clip2) == ClipInside) return true
-        if ((clip1 and clip2) != ClipInside) return false
+        // Return when we are fully inside or fully outside the rectangle
+        if ((clip1 or clip2) == ClipNone) return true
+        if ((clip1 and clip2) != ClipNone) return false
 
         // No need to test for the case where both end points are outside of the rectangle
         // since we only test against parts of the path that overlap the text interval
 
-        val clipType = if (clip1 != ClipInside) clip1 else clip2
-        intersection(p1, p2, r, clipType, out)
+        // Choose one of the two end points to treat first
+        val clipType = if (clip1 != ClipNone) clip1 else clip2
+        intersection(p1, p2, r, clipType, scratch)
 
+        // Depending on which end point we clipped, update the segment and recompute the
+        // clip flags for the modified end point
         if (clipType == clip1) {
-            p1.set(out)
+            p1.set(scratch)
             clip1 = clipType(p1, r)
         } else {
-            p2.set(out)
+            p2.set(scratch)
             clip2 = clipType(p2, r)
         }
     }
 }
 
+/**
+ * Computes the clip flags required for [p] to lie on or inside the rectangle [r]
+ */
 private fun clipType(p: PointF, r: RectF): Int {
-    var clip = ClipInside
+    var clip = ClipNone
     if (p.y < r.top) clip = clip or ClipTop
     if (p.y > r.bottom) clip = clip or ClipBottom
     if (p.x < r.left) clip = clip or ClipLeft
@@ -59,6 +75,11 @@ private fun clipType(p: PointF, r: RectF): Int {
     return clip
 }
 
+/**
+ * Computes and return the intersection of a segment defined by [p1] and [p2] with the
+ * rectangle [r]. The intersection point is written to [out]. The [clip] parameter
+ * indicates which clipping operations to perform on the segment to find the intersection.
+ */
 private fun intersection(p1: PointF, p2: PointF, r: RectF, clip: Int, out: PointF) {
     val dx = p1.x - p2.x
     val dy = p1.y - p2.y
