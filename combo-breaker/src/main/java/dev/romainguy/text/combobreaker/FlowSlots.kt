@@ -80,7 +80,7 @@ internal fun findFlowSlots(
         results?.addAll(intervals)
     }
 
-    if (slots.size == 0) {
+    if (slots.size == 0 && intervals.size == 0) {
         slots.add(box)
     }
 

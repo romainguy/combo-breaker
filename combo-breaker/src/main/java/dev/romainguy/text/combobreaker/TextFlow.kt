@@ -77,6 +77,8 @@ enum class FlowType(private val bits: Int) {
     OutsideLeft(1),
     OutsideRight(2),
     Outside(3),
+    OutsideStart(-1),
+    OutsideEnd(-2),
     None(0);
 
     internal val isLeftFlow: Boolean
@@ -84,6 +86,18 @@ enum class FlowType(private val bits: Int) {
 
     internal val isRightFlow: Boolean
         get() { return (bits and 0x2) != 0 }
+
+    internal fun resolve(direction: LayoutDirection) = when (direction) {
+        LayoutDirection.Ltr -> this
+        LayoutDirection.Rtl -> when (this) {
+            OutsideLeft -> OutsideLeft
+            OutsideRight -> OutsideRight
+            Outside -> Outside
+            OutsideStart -> OutsideRight
+            OutsideEnd -> OutsideLeft
+            None -> None
+        }
+    }
 }
 
 @Composable
@@ -177,7 +191,8 @@ fun TextFlow(
                     selfSize,
                     clip,
                     flowShapes,
-                    density
+                    density,
+                    layoutDirection
                 )
             }
 
@@ -228,11 +243,11 @@ fun TextFlow(
                         }
                     }
                 }
-                .pointerInput(Unit) {
-                    detectDragGestures { change, _ ->
-                        debugLinePosition.value = change.position.y
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, _ ->
+                            debugLinePosition.value = change.position.y
+                        }
                     }
-                }
             }
     )
 }
@@ -268,7 +283,8 @@ private fun buildFlowShape(
     boxSize: IntSize,
     clip: Path,
     flowShapes: ArrayList<FlowShape>,
-    density: Density
+    density: Density,
+    layoutDirection: LayoutDirection
 ) {
     val textFlowData = measurable.textFlowData ?: DefaultTextFlowParentData
 
@@ -302,7 +318,7 @@ private fun buildFlowShape(
         .asAndroidPath()
         .op(clip.asAndroidPath(), android.graphics.Path.Op.INTERSECT)
 
-    flowShapes += FlowShape(path, textFlowData.flowType)
+    flowShapes += FlowShape(path, textFlowData.flowType.resolve(layoutDirection))
 }
 
 private fun Placeable.PlacementScope.placeElement(

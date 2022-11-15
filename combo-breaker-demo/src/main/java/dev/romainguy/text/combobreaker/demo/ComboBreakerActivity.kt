@@ -30,6 +30,8 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -37,7 +39,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import androidx.compose.ui.unit.sp
@@ -63,71 +67,82 @@ class ComboBreakerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            val bitmap1 = remember { BitmapFactory.decodeResource(resources, R.drawable.microphone) }
-            val bitmap2 = remember { BitmapFactory.decodeResource(resources, R.drawable.badge) }
-            val bitmap3 = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape1) }
-            val bitmap4 = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape2) }
-
             ComboBreakerTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    val showDebugOverlay = remember { mutableStateOf(true) }
+                    Page()
+                }
+            }
+        }
+    }
 
-                    TextFlow(
-                        SampleText,
-                        modifier = Modifier.padding(16.dp),
-                        style = TextStyle(fontSize = 14.sp),
-                        debugOverlay = showDebugOverlay.value
-                    ) {
-//                        Image(
-//                            bitmap = bitmap3.asImageBitmap(),
-//                            contentDescription = "",
-//                            modifier = Modifier.flowShape(margin = 8.dp)
-//                        )
-//                        Image(
-//                            bitmap = bitmap4.asImageBitmap(),
-//                            contentDescription = "",
-//                            modifier = Modifier
-//                                .align(Alignment.TopEnd)
-//                                .flowShape(margin = 8.dp)
-//                        )
+    @Composable
+    private fun Page() {
+        val bitmap1 = remember { BitmapFactory.decodeResource(resources, R.drawable.microphone) }
+        val bitmap2 = remember { BitmapFactory.decodeResource(resources, R.drawable.badge) }
+        val bitmap3 = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape1) }
+        val bitmap4 = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape2) }
 
-                        Image(
-                            bitmap = bitmap1.asImageBitmap(),
-                            contentDescription = "",
-                            modifier = Modifier
-                                .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
-                                .flowShape(10.dp, FlowType.OutsideRight) { _, _ ->
-                                    bitmap1.toContour(alphaThreshold = 0.1f).asComposePath()
-                                }
-                        )
+        val showDebugOverlay = remember { mutableStateOf(true) }
 
-                        Image(
-                            bitmap = bitmap2.asImageBitmap(),
-                            contentDescription = "",
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .offset { Offset(0.0f, -bitmap2.height / 3.0f).round() }
-                                .flowShape(10.dp, FlowType.Outside) { _, _ ->
-                                    bitmap2.toContour().asComposePath()
-                                }
-                        )
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            TextFlow(
+                SampleText,
+                modifier = Modifier.padding(16.dp),
+                style = TextStyle(fontSize = 14.sp),
+                debugOverlay = showDebugOverlay.value
+            ) {
+//                Image(
+//                    bitmap = bitmap3.asImageBitmap(),
+//                    contentDescription = "",
+//                    modifier = Modifier.flowShape(margin = 8.dp)
+//                )
+//                Image(
+//                    bitmap = bitmap4.asImageBitmap(),
+//                    contentDescription = "",
+//                    modifier = Modifier
+//                        .align(Alignment.TopEnd)
+//                        .flowShape(margin = 8.dp)
+//                )
 
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .height(40.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = showDebugOverlay.value,
-                                onCheckedChange = { showDebugOverlay.value = it },
-                            )
-                            Text(text = "Debug overlay")
+                Image(
+                    bitmap = bitmap1.asImageBitmap(),
+                    contentDescription = "",
+                    modifier = Modifier
+                        .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
+                        .flowShape(10.dp, FlowType.OutsideEnd) { _, _ ->
+                            bitmap1
+                                .toContour(alphaThreshold = 0.1f)
+                                .asComposePath()
                         }
-                    }
+                )
+
+                Image(
+                    bitmap = bitmap2.asImageBitmap(),
+                    contentDescription = "",
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset { Offset(0.0f, -bitmap2.height / 3.0f).round() }
+                        .flowShape(10.dp, FlowType.Outside) { _, _ ->
+                            bitmap2
+                                .toContour()
+                                .asComposePath()
+                        }
+                )
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .height(40.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = showDebugOverlay.value,
+                        onCheckedChange = { showDebugOverlay.value = it },
+                    )
+                    Text(text = "Debug overlay")
                 }
             }
         }
