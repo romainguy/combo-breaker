@@ -31,6 +31,8 @@ import kotlin.math.min
  * only on one side, both sides, or no side of the shape.
  *
  * @param box Rectangle representing the area in which we want to layout content
+ * @param container Bounds of the [box] container, which will typically match [box] exactly
+ * unless text is laid out over multiple columns/shapes
  * @param flowShapes List of shapes that content must flow around
  * @param results Optional for debug only: holds the list of [Interval] used to find slots
  *
@@ -38,6 +40,7 @@ import kotlin.math.min
  */
 internal fun findFlowSlots(
     box: RectF,
+    container: RectF,
     flowShapes: ArrayList<FlowShape>,
     results: MutableList<Interval<PathSegment>>? = null
 ): List<RectF> {
@@ -92,7 +95,8 @@ internal fun findFlowSlots(
             p1.set(segment.start)
             p2.set(segment.end)
 
-            if (clipSegment(p1, p2, RectF(0.0f, box.top, Float.POSITIVE_INFINITY, box.bottom), scratch)) {
+            // TODO: Fix this!
+            if (clipSegment(p1, p2, container, scratch)) {
                 shapeMin = min(shapeMin, min(p1.x, p2.x))
                 shapeMax = max(shapeMax, max(p1.x, p2.x))
             }
@@ -111,7 +115,7 @@ internal fun findFlowSlots(
     // If we haven't found any new slot because we never even found overlapping shapes,
     // consider the entire layout area as valid
     if (slots.size == 0 && !foundIntervals) {
-        slots.add(box)
+        slots.add(RectF(box))
     }
 
     return slots

@@ -145,6 +145,7 @@ internal fun layoutTextFlow(
                 // line and may be skipped over later.
                 val slots = findFlowSlots(
                     RectF(column.left, y, column.right, y + lineHeight),
+                    RectF(0.0f, y, size.width.toFloat(), y + lineHeight),
                     flowShapes
                 )
 

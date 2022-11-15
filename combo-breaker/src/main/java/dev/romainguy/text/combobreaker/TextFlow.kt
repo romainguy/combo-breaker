@@ -244,12 +244,30 @@ fun TextFlow(
                     val y1 = y - lineHeight / 2.0f
                     val y2 = y + lineHeight / 2.0f
 
+                    val spacing = columnSpacing.toPx()
+                    var columnCount = columns.coerceIn(1, Int.MAX_VALUE)
+                    var columnWidth = (size.width - (columns - 1) * spacing) / columnCount
+                    while (columnWidth <= 0.0f && columnCount > 0) {
+                        columnCount--
+                        columnWidth = (size.width - (columns - 1) * spacing) / columnCount
+                    }
+
+                    val column = RectF(0.0f, y1, columnWidth, y2)
+                    val container = RectF(0.0f, y1, size.width, y2)
+
+                    val slots = mutableListOf<RectF>()
                     val results = mutableListOf<Interval<PathSegment>>()
-                    val slots = findFlowSlots(
-                        RectF(0.0f, y1, size.width, y2),
-                        flowShapes,
-                        results
-                    )
+
+                    for (c in 0 until columnCount) {
+                        val columnSlots = findFlowSlots(
+                            column,
+                            container,
+                            flowShapes,
+                            results
+                        )
+                        slots.addAll(columnSlots)
+                        column.offset(columnWidth + spacing, 0.0f)
+                    }
 
                     onDrawWithContent {
                         drawContent()

@@ -127,7 +127,7 @@ class ComboBreakerActivity : ComponentActivity() {
                     bitmap = bitmap2.asImageBitmap(),
                     contentDescription = "",
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
+                        .align(Alignment.Center)
                         .offset { Offset(0.0f, -bitmap2.height / 3.0f).round() }
                         .flowShape(10.dp, FlowType.Outside) { _, _ ->
                             bitmap2.toContour().asComposePath()
