@@ -46,15 +46,13 @@ internal fun findFlowSlots(
 
     // List of all the intervals we must consider for a given shape
     val intervals = mutableListOf<Interval<PathSegment>>()
-    // List of slots we found for a given shape. We don't put slots
-    // directly inside the [slots] list as need to perform intersection work
-    // with previously found slots
-    val shapeSlots = mutableListOf<RectF>()
 
     // Temporary variable used to avoid allocations
     val p1 = PointF()
     val p2 = PointF()
     val scratch = PointF()
+
+    val flowShapeHits = mutableListOf<FlowShape>()
 
     var foundIntervals = false
     val searchInterval = Interval<PathSegment>(box.top, box.bottom)
@@ -65,6 +63,8 @@ internal fun findFlowSlots(
 
         // Ignore shapes outside of the box or with a flow type of "none"
         if (quickReject(flowShape, box.top, box.bottom)) continue
+
+        flowShapeHits.add(flowShape)
 
         // We first find all the intervals for the current shape that intersect
         // with the box (layout area/line of text). We'll then go through that
@@ -98,26 +98,15 @@ internal fun findFlowSlots(
             }
         }
 
-        // Reset the local list of slots and create a left slot (from the box's left origin
-        // to the shape minimum) and a right slot (from the shape maximum to the box's right).
-        // Since multiple shapes can overlap our search box/layout area, we must do more work,
-        // otherwise the layout algorithm could reuse overlapping slots. To fix this, we run
-        // a reducing/shrinking pass in [addReducedSlots].
+        flowShape.min = shapeMin
+        flowShape.max = shapeMax
 
-        shapeSlots.clear()
+        addReducedSlots(flowShape.flowType, box, shapeMin, shapeMax, slots)
 
-        if (flowShape.flowType.isLeftFlow && shapeMin != Float.POSITIVE_INFINITY) {
-            addReducedSlots(box.left, box.top, shapeMin, box.bottom, slots, shapeSlots)
-        }
-
-        if (flowShape.flowType.isRightFlow && shapeMax != Float.NEGATIVE_INFINITY) {
-            addReducedSlots(shapeMax, box.top, box.right, box.bottom, slots, shapeSlots)
-        }
-
-        // Add our new slots to the final results
-        slots.addAll(shapeSlots)
         results?.addAll(intervals)
     }
+
+    applyFlowShapeExclusions(flowShapeHits, slots)
 
     // If we haven't found any new slot because we never even found overlapping shapes,
     // consider the entire layout area as valid
@@ -129,31 +118,130 @@ internal fun findFlowSlots(
 }
 
 /**
- * Adds the specified slot defined by the rectangle [left], [top], [right], [bottom] to the
- * [slots] list. Before adding the slot to the list, it is compared against all the slots in
- * [ancestorSlots]: if the new slot and an ancestor intersect, the ancestor is changed to the
- * result of the intersection, otherwise the new slot is added to [slots].
+ * Apply the exclusion zones of the selected flow shapes to the given list of slots.
+ * For instance, a flow shape with a type set to [FlowType.OutsideRight] will prevent
+ * any text to flow to its own left.
+ *
+ * @param flowShapes List of flow shapes that need to apply their exclusion zones
+ * @param slots List of slots to modify by intersecting them against flow shape exclusion zones
  */
-private fun addReducedSlots(
-    left: Float,
-    top: Float,
-    right: Float,
-    bottom: Float,
-    ancestorSlots: MutableList<RectF>,
+private fun applyFlowShapeExclusions(
+    flowShapes: MutableList<FlowShape>,
     slots: MutableList<RectF>
 ) {
-    if (left == right) return
+    // Fix-up slots by applying exclusion zones from flow shapes
+    val flowShapeHitCount = flowShapes.size
+    for (i in 0 until flowShapeHitCount) {
+        val hit = flowShapes[i]
+        // We do NOT want to do what's below for shapes marked as Outside, so we
+        // check for the actual types instead of looking at isLeft/RightFlow which
+        // work for Outside as well
+        val leftFlow = hit.flowType == FlowType.OutsideLeft
+        val rightFlow = hit.flowType == FlowType.OutsideRight
 
-    var foundOverlap = false
-    val slotCount = ancestorSlots.size
-    for (i in 0 until slotCount) {
-        if (ancestorSlots[i].intersect(left, top, right, bottom)) {
-            foundOverlap = true
+        if (leftFlow || rightFlow) {
+            val slotCount = slots.size
+            for (j in 0 until slotCount) {
+                val slot = slots[j]
+                if (leftFlow) slot.right = min(slot.right, hit.min)
+                if (rightFlow) slot.left = max(slot.left, hit.max)
+            }
         }
     }
+}
 
-    if (!foundOverlap) {
-        slots.add(RectF(left, top, right, bottom))
+/**
+ * Given a layout area defined by [box] and a flow shape with the specified [min] and [max]
+ * extents, add 0, 1, or 2 new slots to the [slots] list. The number of slots added depends
+ * on the flow [type] of the shape ([FlowType.Outside] for instance tries to add 2 slots,
+ * while [FlowType.OutsideLeft] would try to add only 1). While adding new slots, this function
+ * may also reduce the existing slots presents in the [slots] list by performing intersection
+ * tests between the new slots and the existing ones.
+ *
+ * For instance if we start with a right flowing shape (marked by X's) and find its slot
+ * (drawn as a rectangle), we obtain:
+ *
+ * XX  __________________________________
+ * XX |                                  |
+ * XX  ----------------------------------
+ *
+ * Adding a left flowing slot:
+ *
+ *  ________________________________  XXX
+ * |                                | XXX
+ *  --------------------------------  XXX
+ *
+ * This function will intersect the left flowing slot with our first slot to produce:
+ *
+ * XX  _____________________________  XXX
+ * XX |                             | XXX
+ * XX  -----------------------------  XXX
+ *
+ * If we then add a left-and-right flowing shape defined as thus:
+ *
+ *  ________________XXX_________________
+ * |                XXX                 |
+ *  ----------------XXX-----------------
+ *
+ * The function will intersect the left slots of this shape with the existing slot, then
+ * add a new intersect slot to the right to produce:
+ *
+ * XX  ____________ XXX ____________  XXX
+ * XX |            |XXX|            | XXX
+ * XX  ------------ XXX ------------  XXX
+ *
+ * When the new slots to add don't overlap with any existing slots, they are directly added
+ * to the list of slots.
+ */
+private fun addReducedSlots(
+    type: FlowType,
+    box: RectF,
+    min: Float,
+    max: Float,
+    slots: MutableList<RectF>
+) {
+    val left = box.left
+    val top = box.top
+    val right = box.right
+    val bottom = box.bottom
+
+    val isLeftFlow = type.isLeftFlow
+    val isRightFlow = type.isRightFlow
+
+    var foundLeftOverlap = false
+    var foundRightOverlap = false
+
+    val slotCount = slots.size
+    for (i in 0 until slotCount) {
+        val ancestor = slots[i]
+
+        val leftOverlap = isLeftFlow && ancestor.left < min && left < ancestor.right
+        val rightOverlap = isRightFlow && ancestor.left < right && max < ancestor.right
+
+        if (leftOverlap && rightOverlap) {
+            // Intersect with left slot, add right slot, intersected also
+            val rightSlot = RectF(ancestor)
+            ancestor.horizontalIntersect(left, min)
+            rightSlot.horizontalIntersect(max, right)
+            slots.add(rightSlot)
+        } else {
+            if (leftOverlap) {
+                ancestor.horizontalIntersect(left, min)
+            } else if (rightOverlap) {
+                ancestor.horizontalIntersect(max, right)
+            }
+        }
+
+        foundLeftOverlap = foundLeftOverlap || leftOverlap
+        foundRightOverlap = foundRightOverlap || rightOverlap
+    }
+
+    if (!foundLeftOverlap && isLeftFlow && left != min) {
+        slots.add(RectF(left, top, min, bottom))
+    }
+
+    if (!foundRightOverlap && isRightFlow && max != right) {
+        slots.add(RectF(max, top, right, bottom))
     }
 }
 
@@ -168,3 +256,14 @@ private inline fun quickReject(flowShape: FlowShape, top: Float, bottom: Float) 
     flowShape.flowType == FlowType.None ||
     top > flowShape.bounds.bottom ||
     bottom < flowShape.bounds.top
+
+/**
+ * Behaves like RectF.intersect(float, float, float, float) but only deals with the
+ * left and right parameters.
+ */
+private fun RectF.horizontalIntersect(left: Float, right: Float) {
+    if (this.left < right && left < this.right) {
+        if (this.left < left) this.left = left
+        if (this.right > right) this.right = right
+    }
+}

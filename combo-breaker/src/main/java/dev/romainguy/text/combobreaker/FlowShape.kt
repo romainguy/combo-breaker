@@ -30,4 +30,7 @@ internal class FlowShape(
 ) {
     internal val intervals = path.toIntervals()
     internal val bounds = path.getBounds()
+
+    internal var min = Float.POSITIVE_INFINITY
+    internal var max = Float.NEGATIVE_INFINITY
 }

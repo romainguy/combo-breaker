@@ -87,11 +87,12 @@ enum class FlowType(private val bits: Int) {
     internal val isRightFlow: Boolean
         get() { return (bits and 0x2) != 0 }
 
-    // Note: if we discarded the type and kept only the bit field when
-    // building the internal FlowShape, we could simply return -bits
-    // in RTL when bits < Outside.
     internal fun resolve(direction: LayoutDirection) = when (direction) {
-        LayoutDirection.Ltr -> this
+        LayoutDirection.Ltr -> when (this) {
+            OutsideStart -> OutsideLeft
+            OutsideEnd -> OutsideRight
+            else -> this
+        }
         LayoutDirection.Rtl -> when (this) {
             OutsideLeft -> OutsideLeft
             OutsideRight -> OutsideRight
@@ -373,11 +374,13 @@ private fun ContentDrawScope.drawDebugInfo(
     )
 
     for (slot in slots) {
-        drawRect(
-            color = DebugColors.SecondaryLineFill,
-            topLeft = slot.toOffset(),
-            size = slot.toSize()
-        )
+        if (!slot.isEmpty) {
+            drawRect(
+                color = DebugColors.SecondaryLineFill,
+                topLeft = slot.toOffset(),
+                size = slot.toSize()
+            )
+        }
     }
 
     drawLine(
