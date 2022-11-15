@@ -38,6 +38,7 @@ internal fun Path.toIntervals(
         .forEach { segment ->
             val start = min(segment.start.y, segment.end.y)
             val end = max(segment.start.y, segment.end.y)
+
             intervals += Interval(start, end, segment)
         }
 

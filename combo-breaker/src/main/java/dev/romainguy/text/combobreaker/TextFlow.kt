@@ -68,7 +68,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.round
 import androidx.compose.ui.unit.toOffset
 import androidx.compose.ui.unit.toSize
 import androidx.core.graphics.PathSegment
@@ -171,7 +170,15 @@ fun TextFlow(
                     selfSize
                 )
 
-                buildFlowShape(measurable, position, size, selfSize, clip, flowShapes, density)
+                buildFlowShape(
+                    measurable,
+                    position.toOffset(),
+                    size,
+                    selfSize,
+                    clip,
+                    flowShapes,
+                    density
+                )
             }
 
             textLines.clear()
@@ -256,7 +263,7 @@ private fun rememberTextPaint(
 
 private fun buildFlowShape(
     measurable: Measurable,
-    elementPosition: IntOffset,
+    elementPosition: Offset,
     size: IntSize,
     boxSize: IntSize,
     clip: Path,
@@ -275,11 +282,11 @@ private fun buildFlowShape(
     val position = if (textFlowData.position.isInvalid) elementPosition else textFlowData.position
 
     val path = Path()
-    val sourcePath = textFlowData.flowShape(position, size, boxSize)
+    val sourcePath = textFlowData.flowShape(size, boxSize)
     if (sourcePath == null) {
-        path.addRect(Rect(position.toOffset(), size.toSize()))
+        path.addRect(Rect(position, size.toSize()))
     } else {
-        path.addPath(sourcePath)
+        path.addPath(sourcePath, position)
     }
 
     val margin = with (density) { textFlowData.margin.toPx() }
@@ -291,10 +298,11 @@ private fun buildFlowShape(
         }.getFillPath(androidPath, androidPath)
     }
 
-    path.asAndroidPath().op(clip.asAndroidPath(), android.graphics.Path.Op.INTERSECT)
+    path
+        .asAndroidPath()
+        .op(clip.asAndroidPath(), android.graphics.Path.Op.INTERSECT)
 
-    val flowShape = FlowShape(path, textFlowData.flowType).apply { computeIntervals() }
-    flowShapes += flowShape
+    flowShapes += FlowShape(path, textFlowData.flowType)
 }
 
 private fun Placeable.PlacementScope.placeElement(
@@ -368,7 +376,7 @@ private fun ContentDrawScope.drawDebugInfo(
     )
 }
 
-typealias FlowShapeProvider = (position: IntOffset, size: IntSize, textFlowSize: IntSize) -> Path?
+typealias FlowShapeProvider = (size: IntSize, textFlowSize: IntSize) -> Path?
 
 /**
  * A TextFlowScope provides a scope for the children of [TextFlow].
@@ -434,7 +442,7 @@ internal object TextFlowScopeInstance : TextFlowScope {
 
     @Stable
     override fun Modifier.flowShape(flowType: FlowType, margin: Dp, flowShape: Path?) = this.then(
-        FlowShapeModifier(margin, flowType) { _, _, _ -> flowShape }
+        FlowShapeModifier(margin, flowType) { _, _ -> flowShape }
     )
 
     @Stable
@@ -465,7 +473,7 @@ private class AlignmentAndSizeModifier(
     }
 
     override fun onPlaced(coordinates: LayoutCoordinates) {
-        localParentData?.position = coordinates.positionInParent().round()
+        localParentData?.position = coordinates.positionInParent()
     }
 
     override fun equals(other: Any?): Boolean {
@@ -503,7 +511,7 @@ private class FlowShapeModifier(
     }
 
     override fun onPlaced(coordinates: LayoutCoordinates) {
-        localParentData?.position = coordinates.positionInParent().round()
+        localParentData?.position = coordinates.positionInParent()
     }
 
     override fun equals(other: Any?): Boolean {
@@ -536,8 +544,8 @@ internal data class TextFlowParentData(
     var matchParentSize: Boolean = false,
     var margin: Dp = 0.dp,
     var flowType: FlowType = FlowType.Outside,
-    var flowShape: FlowShapeProvider = { _, _, _ -> null },
-    var position: IntOffset = IntOffset(Integer.MIN_VALUE, Integer.MIN_VALUE)
+    var flowShape: FlowShapeProvider = { _, _ -> null },
+    var position: Offset = Offset(Float.NaN, Float.NaN)
 )
 
 internal val DefaultTextFlowParentData = TextFlowParentData()
@@ -548,7 +556,8 @@ private class TypefaceDirtyTracker(resolveResult: State<Any>) {
         get() = initial as Typeface
 }
 
-internal inline val IntOffset.isInvalid get() = x == Integer.MIN_VALUE || y == Int.MIN_VALUE
+// Check for NaNs
+internal inline val Offset.isInvalid get() = x != x || y != y
 
 private object DebugColors {
     val SegmentColor = Color(0.941f, 0.384f, 0.573f, 1.0f)

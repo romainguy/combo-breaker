@@ -41,7 +41,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.toOffset
 import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.TextFlow
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
@@ -100,11 +99,8 @@ class ComboBreakerActivity : ComponentActivity() {
                             contentDescription = "",
                             modifier = Modifier
                                 .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
-                                .flowShape(10.dp, FlowType.OutsideRight) { p, _, _ ->
-                                    bitmap1
-                                        .toContour(alphaThreshold = 0.1f)
-                                        .asComposePath()
-                                        .apply { translate(p.toOffset()) }
+                                .flowShape(10.dp, FlowType.OutsideRight) { _, _ ->
+                                    bitmap1.toContour(alphaThreshold = 0.1f).asComposePath()
                                 }
                         )
 
@@ -114,11 +110,8 @@ class ComboBreakerActivity : ComponentActivity() {
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .offset { Offset(0.0f, -bitmap2.height / 3.0f).round() }
-                                .flowShape(10.dp, FlowType.Outside) { p, _, _ ->
-                                    bitmap2
-                                        .toContour()
-                                        .asComposePath()
-                                        .apply { translate(p.toOffset()) }
+                                .flowShape(10.dp, FlowType.Outside) { _, _ ->
+                                    bitmap2.toContour().asComposePath()
                                 }
                         )
 
