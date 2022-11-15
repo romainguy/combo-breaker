@@ -475,7 +475,7 @@ interface TextFlowScope {
     ): Modifier
 }
 
-internal object TextFlowScopeInstance : TextFlowScope {
+private object TextFlowScopeInstance : TextFlowScope {
     @Stable
     override fun Modifier.align(alignment: Alignment) = this.then(
         AlignmentAndSizeModifier(
@@ -591,7 +591,7 @@ private class FlowShapeModifier(
     }
 }
 
-internal data class TextFlowParentData(
+private data class TextFlowParentData(
     var alignment: Alignment = Alignment.TopStart,
     var matchParentSize: Boolean = false,
     var margin: Dp = 0.dp,
@@ -600,7 +600,7 @@ internal data class TextFlowParentData(
     var position: Offset = Offset(Float.NaN, Float.NaN)
 )
 
-internal val DefaultTextFlowParentData = TextFlowParentData()
+private val DefaultTextFlowParentData = TextFlowParentData()
 
 private class TypefaceDirtyTracker(resolveResult: State<Any>) {
     val initial = resolveResult.value
@@ -609,7 +609,7 @@ private class TypefaceDirtyTracker(resolveResult: State<Any>) {
 }
 
 // Check for NaNs
-internal inline val Offset.isInvalid get() = x != x || y != y
+private inline val Offset.isInvalid get() = x != x || y != y
 
 private object DebugColors {
     val SegmentColor = Color(0.941f, 0.384f, 0.573f, 1.0f)
