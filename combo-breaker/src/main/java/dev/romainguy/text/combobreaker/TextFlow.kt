@@ -151,7 +151,7 @@ enum class FlowType(private val bits: Int) {
  * The [TextFlow] will size itself to fit the [content], subject to the incoming constraints.
  * When children are smaller than the parent, by default they will be positioned inside
  * the [TextFlow] according to the [contentAlignment]. For individually specifying the alignments
- * of the children layouts, use the [BoxScope.align] modifier.
+ * of the children layouts, use the [TextFlowScope.align] modifier.
  *
  * By default, the content will be measured without the [TextFlow]'s incoming min constraints,
  * unless [propagateMinConstraints] is `true`. As an example, setting [propagateMinConstraints] to
