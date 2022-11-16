@@ -345,6 +345,7 @@ private fun buildFlowShape(
 
     val margin = with (density) { textFlowData.margin.toPx() }
     if (margin > 0.0f) {
+        // Note: see comment below
         val androidPath = path.asAndroidPath()
         Paint().apply {
             style = Paint.Style.FILL_AND_STROKE
@@ -352,6 +353,12 @@ private fun buildFlowShape(
         }.getFillPath(androidPath, androidPath)
     }
 
+    // TODO: Our layout algorithm does not need to intersect the path with the larger
+    //       containment area, but this has the nice side effect of cleaning up paths tremendously
+    //       when they've been expanded via getFillPath() above. This dramatically reduces the
+    //       number of segments and cleans up self overlaps. It is however quite expensive so
+    //       we should try to get rid of it by getting rid of getFillPath() and finding another
+    //       way to create margins
     path
         .asAndroidPath()
         .op(clip.asAndroidPath(), android.graphics.Path.Op.INTERSECT)
