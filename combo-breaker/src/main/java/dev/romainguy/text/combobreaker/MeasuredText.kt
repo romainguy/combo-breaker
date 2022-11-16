@@ -22,7 +22,7 @@ import androidx.annotation.RequiresApi
 object MeasuredTextHelper {
     @RequiresApi(33)
     fun hyphenation(builder: MeasuredText.Builder, hyphenation: TextFlowHyphenation) {
-        if (hyphenation == TextFlowHyphenation.Auto) {
+        if (hyphenation != TextFlowHyphenation.None) {
             builder.setComputeHyphenation(MeasuredText.Builder.HYPHENATION_MODE_NORMAL)
         }
     }
