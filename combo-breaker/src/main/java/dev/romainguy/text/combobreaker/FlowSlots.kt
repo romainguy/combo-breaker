@@ -44,6 +44,8 @@ internal fun findFlowSlots(
     flowShapes: ArrayList<FlowShape>,
     results: MutableList<Interval<PathSegment>>? = null
 ): List<RectF> {
+    // TODO: Clean up all most of the allocations we do here
+
     // List of all the slots we found
     val slots = mutableListOf<RectF>()
 
@@ -143,12 +145,16 @@ private fun applyFlowShapeExclusions(
         val leftFlow = hit.flowType == FlowType.OutsideLeft
         val rightFlow = hit.flowType == FlowType.OutsideRight
 
-        if (leftFlow || rightFlow) {
-            val slotCount = slots.size
-            for (j in 0 until slotCount) {
-                val slot = slots[j]
-                if (leftFlow) slot.right = min(slot.right, hit.min)
-                if (rightFlow) slot.left = max(slot.left, hit.max)
+        val slotCount = slots.size
+        for (j in 0 until slotCount) {
+            val slot = slots[j]
+            if (leftFlow) {
+                slot.right = min(slot.right, hit.min)
+            } else if (rightFlow) {
+                slot.left = max(slot.left, hit.max)
+            } else if (slot.left >= hit.min && slot.right <= hit.max) {
+                // The slot is entirely inside another flow shape, so we discard it
+                slot.setEmpty()
             }
         }
     }

@@ -329,7 +329,11 @@ private fun buildFlowShape(
         return
     }
 
-    val position = if (textFlowData.position.isInvalid) elementPosition else textFlowData.position
+    val position = if (textFlowData.position == Offset.Unspecified) {
+        elementPosition
+    } else {
+        textFlowData.position
+    }
 
     val path = Path()
     val sourcePath = textFlowData.flowShape(size, boxSize)
@@ -597,7 +601,7 @@ private data class TextFlowParentData(
     var margin: Dp = 0.dp,
     var flowType: FlowType = FlowType.Outside,
     var flowShape: FlowShapeProvider = { _, _ -> null },
-    var position: Offset = Offset(Float.NaN, Float.NaN)
+    var position: Offset = Offset.Unspecified
 )
 
 private val DefaultTextFlowParentData = TextFlowParentData()
@@ -607,9 +611,6 @@ private class TypefaceDirtyTracker(resolveResult: State<Any>) {
     val typeface: Typeface
         get() = initial as Typeface
 }
-
-// Check for NaNs
-private inline val Offset.isInvalid get() = x != x || y != y
 
 private object DebugColors {
     val SegmentColor = Color(0.941f, 0.384f, 0.573f, 1.0f)

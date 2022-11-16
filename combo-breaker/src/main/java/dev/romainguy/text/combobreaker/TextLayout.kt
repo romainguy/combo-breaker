@@ -153,6 +153,9 @@ internal fun layoutTextFlow(
                 // a no-op since ascent is set to 0. We'll fix this below
                 y += ascent
 
+                // Remember our number of "lines" to check later if we added new ones
+                val lineCount = lines.size
+
                 // We now need to fit as much text as possible for the current paragraph in the list
                 // of slots we just computed
                 for (slot in slots) {
@@ -250,10 +253,18 @@ internal fun layoutTextFlow(
                     if (breakOffset >= paragraph.length || y >= column.height()) break
                 }
 
-                // Move the cursor to the next line
-                y += descent
+                // If we were not able to find a suitable slot and we haven't found
+                // our first line yet, move y forward by the default line height
+                // so we don't loop forever
+                if (lineCount == lines.size && ascent == 0.0f && descent == 0.0f) {
+                    y += lineHeight
+                } else {
+                    // Move the cursor to the next line
+                    y += descent
+                }
             }
 
+            // Reached the end of the paragraph, move to the next one
             if (breakOffset >= paragraph.length) {
                 currentParagraph++
                 breakOffset = 0
