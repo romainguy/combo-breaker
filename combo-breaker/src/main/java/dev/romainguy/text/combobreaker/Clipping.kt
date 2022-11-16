@@ -32,7 +32,7 @@ private const val ClipRight = 8
  * modifies the two points [p1] and [p2] directly. The [scratch] parameter is used as a temporary
  * allocation.
  *
- * @return True if the segment intersects with or is inside [r], false otherwise
+ * @return True if the segment intersects with or is inside [r], false otherwise.
  */
 internal fun clipSegment(p1: PointF, p2: PointF, r: RectF, scratch: PointF): Boolean {
     // Find the types of clipping required

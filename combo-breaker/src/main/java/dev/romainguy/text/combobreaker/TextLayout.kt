@@ -30,18 +30,18 @@ import androidx.compose.ui.unit.LayoutDirection
  * Note the term "line" is used loosely here, as it could be just a chunk of a visual
  * line. Most of the time this will be a full line though.
  *
- * @param text The text buffer to render text from (see [start] and [end]
- * @param start The start offset in the [text] buffer
- * @param end The end offset in the [text] buffer
+ * @param text The text buffer to render text from (see [start] and [end].
+ * @param start The start offset in the [text] buffer.
+ * @param end The end offset in the [text] buffer.
  * @param startHyphen The start hyphen value for this class, as expected by
- * [TextPaint.setStartHyphenEdit]
+ * [TextPaint.setStartHyphenEdit].
  * @param endHyphen The start hyphen value for this class, as expected by
- * [TextPaint.setStartHyphenEdit]
+ * [TextPaint.setStartHyphenEdit].
  * @param justifyWidth The word spacing required to justify this line of text, as expected by
- * [TextPaint.setWordSpacing]
- * @param x The x coordinate of where to draw the line of text
- * @param y The y coordinate of where to draw the line of text
- * @param paint The paint to use to render this line of text
+ * [TextPaint.setWordSpacing].
+ * @param x The x coordinate of where to draw the line of text.
+ * @param y The y coordinate of where to draw the line of text.
+ * @param paint The paint to use to render this line of text.
  */
 internal class TextLine(
     val text: String,
@@ -63,15 +63,15 @@ internal class TextLine(
  * The caller is responsible for iterating over the list of lines to render the result
  * (see [TextLine]).
  *
- * @param text The text to layout
+ * @param text The text to layout.
  * @param size The size of the area where layout must occur. The resulting text will not
- * extend beyond those dimensions
- * @param columns Number of columns of text to use in the given area
- * @param columnSpacing Empty space between columns
- * @param layoutDirection The RTL or LTR direction of the layout
- * @param paint The paint to use to measure and render the text
- * @param flowShapes The list of shapes to flow text around
- * @param lines List of lines where the resulting layout will be stored
+ * extend beyond those dimensions.
+ * @param columns Number of columns of text to use in the given area.
+ * @param columnSpacing Empty space between columns.
+ * @param layoutDirection The RTL or LTR direction of the layout.
+ * @param paint The paint to use to measure and render the text.
+ * @param flowShapes The list of shapes to flow text around.
+ * @param lines List of lines where the resulting layout will be stored.
  */
 internal fun layoutTextFlow(
     text: String,

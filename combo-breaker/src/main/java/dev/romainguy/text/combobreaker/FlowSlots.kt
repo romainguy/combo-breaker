@@ -30,13 +30,13 @@ import kotlin.math.min
  * The resulting list will honor the [FlowType] of each [FlowShape], allowing content to lay
  * only on one side, both sides, or no side of the shape.
  *
- * @param box Rectangle representing the area in which we want to layout content
- * @param container Bounds of the [box] container, which will typically match [box] exactly
- * unless text is laid out over multiple columns/shapes
- * @param flowShapes List of shapes that content must flow around
- * @param results Optional for debug only: holds the list of [Interval] used to find slots
+ * @param box Rectangle representing the area in which we want to layout content.
+ * @param container Bounds of the [box] container, which will typically match [box] exactly.
+ * unless text is laid out over multiple columns/shapes.
+ * @param flowShapes List of shapes that content must flow around.
+ * @param results Optional for debug only: holds the list of [Interval] used to find slots.
  *
- * @return A list of rectangles indicating where content can be laid out
+ * @return A list of rectangles indicating where content can be laid out.
  */
 internal fun findFlowSlots(
     box: RectF,
@@ -128,8 +128,8 @@ internal fun findFlowSlots(
  * For instance, a flow shape with a type set to [FlowType.OutsideRight] will prevent
  * any text to flow to its own left.
  *
- * @param flowShapes List of flow shapes that need to apply their exclusion zones
- * @param slots List of slots to modify by intersecting them against flow shape exclusion zones
+ * @param flowShapes List of flow shapes that need to apply their exclusion zones.
+ * @param slots List of slots to modify by intersecting them against flow shape exclusion zones.
  */
 private fun applyFlowShapeExclusions(
     flowShapes: MutableList<FlowShape>,
