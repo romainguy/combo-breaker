@@ -136,6 +136,27 @@ enum class FlowType(private val bits: Int) {
 }
 
 /**
+ * Controls the behavior of text justification in a [TextFlow].
+ */
+enum class TextFlowJustification {
+    /** Turns off text justification. */
+    None,
+    /** Turns on text justification. */
+    Auto
+}
+
+/**
+ * Controls the behavior of text hyphenation in a [TextFlow]. Hyphenation will only work on
+ * API level 33 and above.
+ */
+enum class TextFlowHyphenation {
+    /** No text hyphenation. */
+    None,
+    /** Automatic text hyphenation. */
+    Auto
+}
+
+/**
  * A layout composable with [content] that can flow [text] around the shapes defined by the
  * elements of [content].
  *
@@ -153,6 +174,14 @@ enum class FlowType(private val bits: Int) {
  * the [TextFlow] according to the [contentAlignment]. For individually specifying the alignments
  * of the children layouts, use the [TextFlowScope.align] modifier.
  *
+ * Text justification can be controlled with the [justification] parameter, but it is strongly
+ * recommended to leave it on to provide balanced flow around shapes with a flow type set to
+ * [FlowType.Outside].
+ *
+ * Text hyphenation can be controlled with the [hyphenation] parameter, but will only work on
+ * API level that support hyphenation control (API 33+). It is also recommended to keep hyphenation
+ * turned on to provide more balanced results.
+ *
  * By default, the content will be measured without the [TextFlow]'s incoming min constraints,
  * unless [propagateMinConstraints] is `true`. As an example, setting [propagateMinConstraints] to
  * `true` can be useful when the [TextFlow] has content on which modifiers cannot be specified
@@ -166,6 +195,8 @@ enum class FlowType(private val bits: Int) {
  * @param text The text to layout around the shapes defined by the content's elements.
  * @param modifier The modifier to be applied to the layout.
  * @param style The default text style to apply to [text].
+ * @param justification Sets the type of text justification.
+ * @param hyphenation Sets the type of text hyphenation (only on supported API levels).
  * @param columns The desired number of columns to layout [text] with.
  * @param columnSpacing The amount of space between two adjacent columns.
  * @param contentAlignment The default alignment inside the layout.
@@ -179,6 +210,8 @@ fun TextFlow(
     text: String,
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
+    justification: TextFlowJustification = TextFlowJustification.Auto,
+    hyphenation: TextFlowHyphenation = TextFlowHyphenation.Auto,
     columns: Int = 1,
     columnSpacing: Dp = 16.dp,
     contentAlignment: Alignment = Alignment.TopStart,
@@ -281,6 +314,8 @@ fun TextFlow(
                 columnSpacing.toPx(),
                 layoutDirection,
                 textPaint,
+                justification,
+                hyphenation,
                 flowShapes,
                 textLines
             )
@@ -348,11 +383,11 @@ fun TextFlow(
                         }
                     }
                 }
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, _ ->
-                            debugLinePosition.value = change.position.y
-                        }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, _ ->
+                        debugLinePosition.value = change.position.y
                     }
+                }
             }
     )
 }
@@ -378,6 +413,7 @@ private fun rememberTextPaint(
                 holder.typeface
             }
         applySpanStyle(style.toSpanStyle(), resolveTypeface, density)
+        isAntiAlias = true
     }
 }
 

@@ -125,7 +125,7 @@ fun TextPaint.applySpanStyle(
 
     if (style.localeList != null && style.localeList != LocaleList.current) {
         if (Build.VERSION.SDK_INT >= 24) {
-            LocaleListHelperMethods.setTextLocales(this, style.localeList!!)
+            LocaleListHelper.setTextLocales(this, style.localeList!!)
         } else {
             val locale = if (style.localeList!!.isEmpty()) {
                 Locale.current

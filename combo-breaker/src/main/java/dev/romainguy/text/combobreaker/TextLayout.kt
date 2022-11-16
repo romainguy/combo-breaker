@@ -19,6 +19,7 @@ package dev.romainguy.text.combobreaker
 import android.graphics.RectF
 import android.graphics.text.LineBreaker
 import android.graphics.text.MeasuredText
+import android.os.Build
 import android.text.TextPaint
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
@@ -70,6 +71,8 @@ internal class TextLine(
  * @param columnSpacing Empty space between columns.
  * @param layoutDirection The RTL or LTR direction of the layout.
  * @param paint The paint to use to measure and render the text.
+ * @param justification Sets the type of text justification.
+ * @param hyphenation Sets the type of text hyphenation (only on supported API levels).
  * @param flowShapes The list of shapes to flow text around.
  * @param lines List of lines where the resulting layout will be stored.
  */
@@ -80,6 +83,8 @@ internal fun layoutTextFlow(
     columnSpacing: Float,
     layoutDirection: LayoutDirection,
     paint: TextPaint,
+    justification: TextFlowJustification,
+    hyphenation: TextFlowHyphenation,
     flowShapes: ArrayList<FlowShape>,
     lines: MutableList<TextLine>
 ) {
@@ -173,7 +178,7 @@ internal fun layoutTextFlow(
                     // LineBreaker therefore expects to compute breaks over the entire array
                     val measuredText = MeasuredText.Builder(subtext.toCharArray())
                         .appendStyleRun(paint, subtext.length, false)
-                        .setComputeHyphenation(MeasuredText.Builder.HYPHENATION_MODE_NORMAL)
+                        .hyphenation(hyphenation)
                         .build()
 
                     val result = lineBreaker.computeLineBreaks(measuredText, constraints, 0)
@@ -214,13 +219,19 @@ internal fun layoutTextFlow(
                             // "desperate" to fit the text, so we can't use its text measurement.
                             // Instead we measure the width ourselves so we can shrink the line with
                             // negative word spacing
-                            if (!lineTooWide && !hasEndHyphen) {
+                            if (lineTooWide && !hasEndHyphen) {
                                 width = measuredText.getWidth(0, endOffset)
                             }
 
                             // Compute the amount of spacing to give to each stretchable space
                             // Can be positive (justification) or negative (line too wide)
                             justifyWidth = (constraints.width - width) / stretchableSpaces
+
+                            // Kill justification if the user asked to, but keep line shrinking
+                            // for hyphens and desperate placement
+                            if (justification == TextFlowJustification.None && justifyWidth > 0) {
+                                justifyWidth = 0.0f
+                            }
                         } else if (lineTooWide) {
                             continue
                         }
@@ -256,11 +267,11 @@ internal fun layoutTextFlow(
                 // If we were not able to find a suitable slot and we haven't found
                 // our first line yet, move y forward by the default line height
                 // so we don't loop forever
-                if (lineCount == lines.size && ascent == 0.0f && descent == 0.0f) {
-                    y += lineHeight
+                y += if (lineCount == lines.size && ascent == 0.0f && descent == 0.0f) {
+                    lineHeight
                 } else {
                     // Move the cursor to the next line
-                    y += descent
+                    descent
                 }
             }
 
@@ -312,4 +323,13 @@ private fun trimEndSpace(text: String, lineEndOffset: Int): Int {
         endOffset--
     }
     return endOffset
+}
+
+private fun MeasuredText.Builder.hyphenation(
+    hyphenation: TextFlowHyphenation
+): MeasuredText.Builder {
+    if (Build.VERSION.SDK_INT >= 33) {
+        MeasuredTextHelper.hyphenation(this, hyphenation)
+    }
+    return this
 }

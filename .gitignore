@@ -44,6 +44,7 @@ captures/
 .idea/tasks.xml
 .idea/gradle.xml
 .idea/assetWizardSettings.xml
+.idea/deploymentTargetDropDown.xml
 .idea/dictionaries
 .idea/libraries
 # Android Studio 3 in .gitignore file.

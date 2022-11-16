@@ -1,11 +1,11 @@
 /*
- * Copyright 2020 The Android Open Source Project
+ * Copyright (C) 2022 Romain Guy
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,16 +16,14 @@
 
 package dev.romainguy.text.combobreaker
 
-import android.text.TextPaint
-import androidx.compose.ui.text.intl.Locale
-import androidx.compose.ui.text.intl.LocaleList
+import android.graphics.text.MeasuredText
+import androidx.annotation.RequiresApi
 
-internal fun Locale.toJavaLocale(): java.util.Locale = java.util.Locale(language, region)
-
-internal object LocaleListHelper {
-    fun setTextLocales(textPaint: TextPaint, localeList: LocaleList) {
-        textPaint.textLocales = android.os.LocaleList(
-            *localeList.map { it.toJavaLocale() }.toTypedArray()
-        )
+object MeasuredTextHelper {
+    @RequiresApi(33)
+    fun hyphenation(builder: MeasuredText.Builder, hyphenation: TextFlowHyphenation) {
+        if (hyphenation == TextFlowHyphenation.Auto) {
+            builder.setComputeHyphenation(MeasuredText.Builder.HYPHENATION_MODE_NORMAL)
+        }
     }
 }
