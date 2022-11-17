@@ -251,7 +251,6 @@ fun TextFlow(
 
     var debugLinePosition by remember { mutableStateOf(Float.NaN) }
 
-    // TODO: We should remember this. Figure out the keys
     val measurePolicy = MeasurePolicy { measurables, constraints ->
         val contentConstraints = if (propagateMinConstraints) {
             constraints

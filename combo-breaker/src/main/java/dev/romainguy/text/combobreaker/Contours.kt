@@ -44,14 +44,12 @@ internal class Contour(x: Float, y: Float, capacity: Int = 64) {
      * The points making this contour. The size of the array is guaranteed to be greater or
      * equal to [count] * 2. Each point is made of 2 floats in the array, respectively x and y.
      */
-    var points = FloatArray(capacity * 2) // 2 floats per point
-        private set
+    private var points = FloatArray(capacity * 2) // 2 floats per point
 
     /**
      * Numbers of points in this contour.
      */
-    var count = 1
-        private set
+    private var count = 1
 
     init {
         points[0] = x
