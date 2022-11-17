@@ -22,13 +22,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +43,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -50,6 +57,8 @@ import androidx.compose.ui.unit.round
 import androidx.compose.ui.unit.sp
 import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.TextFlow
+import dev.romainguy.text.combobreaker.TextFlowHyphenation
+import dev.romainguy.text.combobreaker.TextFlowJustification
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
 import dev.romainguy.text.combobreaker.toContour
 
@@ -97,44 +106,84 @@ class ComboBreakerActivity : ComponentActivity() {
             derivedStateOf { bitmap2.toContour().asComposePath() }
         }
 
-        val showDebugOverlay = remember { mutableStateOf(true) }
+        var columns by remember { mutableStateOf(2) }
+        var justify by remember { mutableStateOf(true) }
+        var hyphens by remember { mutableStateOf(true) }
+        var showDebugOverlay by remember { mutableStateOf(true) }
 
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            TextFlow(
-                SampleText,
-                modifier = Modifier.padding(16.dp),
-                style = TextStyle(fontSize = 14.sp),
-                columns = 2,
-                debugOverlay = showDebugOverlay.value
-            ) {
-                Image(
-                    bitmap = bitmap1.asImageBitmap(),
-                    contentDescription = "",
+            Column(modifier = Modifier.padding(16.dp)) {
+                TextFlow(
+                    SampleText,
                     modifier = Modifier
-                        .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
-                        .flowShape(10.dp, FlowType.OutsideEnd) { _, _ -> shape1 }
-                )
-
-                Image(
-                    bitmap = bitmap2.asImageBitmap(),
-                    contentDescription = "",
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .offset { Offset(0.0f, -bitmap2.height / 3.0f).round() }
-                        .flowShape(10.dp, FlowType.Outside) { _, _ -> shape2 }
-                )
-
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .height(40.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .weight(1.0f)
+                        .fillMaxWidth(),
+                    style = TextStyle(fontSize = 14.sp),
+                    justification = if (justify) {
+                        TextFlowJustification.Auto
+                    } else {
+                        TextFlowJustification.None
+                    },
+                    hyphenation = if (hyphens) {
+                        TextFlowHyphenation.Auto
+                    } else {
+                        TextFlowHyphenation.None
+                    },
+                    columns = columns,
+                    debugOverlay = showDebugOverlay
                 ) {
-                    Checkbox(
-                        checked = showDebugOverlay.value,
-                        onCheckedChange = { showDebugOverlay.value = it }
+                    Image(
+                        bitmap = bitmap1.asImageBitmap(),
+                        contentDescription = "",
+                        modifier = Modifier
+                            .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
+                            .flowShape(10.dp, FlowType.OutsideEnd) { _, _ -> shape1 }
                     )
-                    Text(text = "Debug overlay")
+
+                    Image(
+                        bitmap = bitmap2.asImageBitmap(),
+                        contentDescription = "",
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .flowShape(10.dp, FlowType.Outside) { _, _ -> shape2 }
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "Columns")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Slider(
+                        modifier = Modifier.weight(0.1f),
+                        value = columns.toFloat(),
+                        onValueChange = { value -> columns = value.toInt() },
+                        valueRange = 1.0f..4.0f
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = justify,
+                        onCheckedChange = { justify = it }
+                    )
+                    Text(text = "Justify")
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Checkbox(
+                        checked = hyphens,
+                        onCheckedChange = { hyphens = it }
+                    )
+                    Text(text = "Hyphenate")
+
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Checkbox(
+                        checked = showDebugOverlay,
+                        onCheckedChange = { showDebugOverlay = it }
+                    )
+                    Text(text = "Debug")
                 }
             }
         }
