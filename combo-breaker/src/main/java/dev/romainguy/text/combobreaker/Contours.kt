@@ -250,6 +250,9 @@ internal class ContourSet {
             contours[to].prepend(x0, y0)
         } else {
             // No contour, let's start a new one
+            // TODO: We often create a Contour here to join it right after in the next call
+            //       to addLine(). We could defer the creation until the next addition to
+            //       avoid those merges
             contours.add(Contour(x0, y0, x1, y1))
         }
     }
