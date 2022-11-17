@@ -197,6 +197,15 @@ internal fun layoutTextFlow(
                     ascent = -result.getLineAscent(0)
                     descent = result.getLineDescent(0)
 
+                    // Correct ascent for the first line in the paragraph
+                    if (first) {
+                        y += ascent
+                        first = false
+                    }
+
+                    // Don't enqueue a new line if we'd lay it out out of bounds
+                    if (y  > column.height() || (y + descent) > column.height()) break
+
                     // Implement justification. We only justify when we are not laying out the last
                     // line of a paragraph (which looks horrible) or if the current line is too wide
                     // (which could be because LineBreaker entered desperate mode)
@@ -237,12 +246,6 @@ internal fun layoutTextFlow(
                         }
                     }
 
-                    // Correct ascent for the first line in the paragraph
-                    if (first) {
-                        y += ascent
-                        first = false
-                    }
-
                     // Enqueue a new text chunk
                     lines.add(
                         TextLine(
@@ -261,7 +264,7 @@ internal fun layoutTextFlow(
                     // Increase our current offset in side the paragraph
                     breakOffset += lineOffset
 
-                    if (breakOffset >= paragraph.length || y >= column.height()) break
+                    if (breakOffset >= paragraph.length) break
                 }
 
                 // If we were not able to find a suitable slot and we haven't found
