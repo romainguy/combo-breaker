@@ -27,8 +27,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -239,12 +241,15 @@ fun TextFlow(
     val context = LocalContext.current
     val density = LocalDensity.current
 
-    val fontFamilyResolver = remember { createFontFamilyResolver(context) }
-    val textPaint = rememberTextPaint(fontFamilyResolver, style, density)
-    val textLines = remember { mutableListOf<TextLine>() }
-    val flowShapes = remember { ArrayList<FlowShape>() }
+    val state = remember {
+        TextFlowSate(
+            paint = createTextPaint(createFontFamilyResolver(context), style, density),
+            lines = mutableListOf(),
+            shapes = ArrayList()
+        )
+    }
 
-    val debugLinePosition = remember { mutableStateOf(Float.NaN) }
+    var debugLinePosition by remember { mutableStateOf(Float.NaN) }
 
     // TODO: We should remember this. Figure out the keys
     val measurePolicy = MeasurePolicy { measurables, constraints ->
@@ -256,8 +261,8 @@ fun TextFlow(
 
         val placeables = arrayOfNulls<Placeable>(measurables.size)
 
-        flowShapes.clear()
-        flowShapes.ensureCapacity(measurables.size)
+        state.shapes.clear()
+        state.shapes.ensureCapacity(measurables.size)
 
         var hasMatchParentSizeChildren = false
         var selfWidth = constraints.minWidth
@@ -316,13 +321,13 @@ fun TextFlow(
                     size,
                     selfSize,
                     clip,
-                    flowShapes,
+                    state.shapes,
                     density,
                     layoutDirection
                 )
             }
 
-            textLines.clear()
+            state.lines.clear()
 
             val result = layoutTextFlow(
                 text,
@@ -330,17 +335,17 @@ fun TextFlow(
                 columns,
                 columnSpacing.toPx(),
                 layoutDirection,
-                textPaint,
+                state.paint,
                 justification,
                 hyphenation,
-                flowShapes,
-                textLines
+                state.shapes,
+                state.lines
             )
 
             onTextFlowLayoutResult(result)
 
             // We don't need to keep all this data when the overlay isn't present
-            if (!debugOverlay) flowShapes.clear()
+            if (!debugOverlay) state.shapes.clear()
         }
     }
 
@@ -351,7 +356,7 @@ fun TextFlow(
             .drawBehind {
                 drawIntoCanvas {
                     val c = it.nativeCanvas
-                    for (line in textLines) {
+                    for (line in state.lines) {
                         line.paint.startHyphenEdit = line.startHyphen
                         line.paint.endHyphenEdit = line.endHyphen
                         line.paint.wordSpacing = line.justifyWidth
@@ -364,8 +369,8 @@ fun TextFlow(
                 drawWithCache {
                     val stripeFill = debugStripeFill()
 
-                    val lineHeight = textPaint.fontMetrics.descent - textPaint.fontMetrics.ascent
-                    val y = debugLinePosition.value
+                    val lineHeight = state.paint.fontMetrics.descent - state.paint.fontMetrics.ascent
+                    val y = debugLinePosition
                     val y1 = y - lineHeight / 2.0f
                     val y2 = y + lineHeight / 2.0f
 
@@ -387,7 +392,7 @@ fun TextFlow(
                         val columnSlots = findFlowSlots(
                             column,
                             container,
-                            flowShapes,
+                            state.shapes,
                             results
                         )
                         slots.addAll(columnSlots)
@@ -397,43 +402,47 @@ fun TextFlow(
                     onDrawWithContent {
                         drawContent()
 
-                        if (debugLinePosition.value.isFinite()) {
-                            drawDebugInfo(y1, y2, flowShapes, results, slots, stripeFill)
+                        if (debugLinePosition.isFinite()) {
+                            drawDebugInfo(y1, y2, state.shapes, results, slots, stripeFill)
                         }
                     }
                 }
                 .pointerInput(Unit) {
                     detectDragGestures { change, _ ->
-                        debugLinePosition.value = change.position.y
+                        debugLinePosition = change.position.y
                     }
                 }
             }
     )
 }
 
-@Composable
-private fun rememberTextPaint(
+@Stable
+private class TextFlowSate(
+    val paint: TextPaint,
+    val lines: MutableList<TextLine>,
+    val shapes: ArrayList<FlowShape>
+)
+
+private fun createTextPaint(
     fontFamilyResolver: FontFamily.Resolver,
     style: TextStyle,
     density: Density
-) = remember(fontFamilyResolver, style, density) {
-    TextPaint().apply {
-        val resolvedTypefaces: MutableList<TypefaceDirtyTracker> = mutableListOf()
-        val resolveTypeface: (FontFamily?, FontWeight, FontStyle, FontSynthesis) -> Typeface =
-            { fontFamily, fontWeight, fontStyle, fontSynthesis ->
-                val result = fontFamilyResolver.resolve(
-                    fontFamily,
-                    fontWeight,
-                    fontStyle,
-                    fontSynthesis
-                )
-                val holder = TypefaceDirtyTracker(result)
-                resolvedTypefaces.add(holder)
-                holder.typeface
-            }
-        applySpanStyle(style.toSpanStyle(), resolveTypeface, density)
-        isAntiAlias = true
-    }
+) = TextPaint().apply {
+    val resolvedTypefaces: MutableList<TypefaceDirtyTracker> = mutableListOf()
+    val resolveTypeface: (FontFamily?, FontWeight, FontStyle, FontSynthesis) -> Typeface =
+        { fontFamily, fontWeight, fontStyle, fontSynthesis ->
+            val result = fontFamilyResolver.resolve(
+                fontFamily,
+                fontWeight,
+                fontStyle,
+                fontSynthesis
+            )
+            val holder = TypefaceDirtyTracker(result)
+            resolvedTypefaces.add(holder)
+            holder.typeface
+        }
+    applySpanStyle(style.toSpanStyle(), resolveTypeface, density)
+    isAntiAlias = true
 }
 
 private fun buildFlowShape(
