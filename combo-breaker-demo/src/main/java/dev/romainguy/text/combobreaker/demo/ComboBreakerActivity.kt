@@ -61,15 +61,13 @@ import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
 import dev.romainguy.text.combobreaker.toContour
 
 //region Sample text
-const val SampleText = """The correctness and coherence of the lighting environment is paramount to achieving plausible visuals. After surveying existing rendering engines (such as Unity or Unreal Engine 4) as well as the traditional real-time rendering literature, it is obvious that coherency is rarely achieved.
+const val SampleText = """The English language does not have definitive hyphenation rules, though various style guides provide detailed usage recommendations and have a significant amount of overlap in what they advise. Hyphens are mostly used to break single words into parts or to join ordinarily separate words into single words. Spaces are not placed between a hyphen and either of the elements it connects except when using a suspended or "hanging" hyphen that stands in for a repeated word (e.g., nineteenth- and twentieth-century writers). Style conventions that apply to hyphens (and dashes) have evolved to support ease of reading in complex constructions; editors often accept deviations if they aid rather than hinder easy comprehension.
 
-The Unreal Engine, for instance, lets artists specify the “brightness” of a point light in lumen, a unit of luminous power. The brightness of directional lights is however expressed using an arbitrary unnamed unit. To match the brightness of a point light with a luminous power of 5,000 lumen, the artist must use a directional light of brightness 10. This kind of mismatch makes it difficult for artists to maintain the visual integrity of a scene when adding, removing or modifying lights. Using solely arbitrary units is a coherent solution but it makes reusing lighting rigs a difficult task. For instance, an outdoor scene will use a directional light of brightness 10 as the sun and all other lights will be defined relative to that value. Moving these lights to an indoor environment would make them too bright.
+The use of the hyphen in English compound nouns and verbs has, in general, been steadily declining. Compounds that might once have been hyphenated are increasingly left with spaces or are combined into one word. Reflecting this changing usage, in 2007, the sixth edition of the Shorter Oxford English Dictionary removed the hyphens from 16,000 entries, such as fig-leaf (now fig leaf), pot-belly (now pot belly), and pigeon-hole (now pigeonhole). The increasing prevalence of computer technology and the advent of the Internet have given rise to a subset of common nouns that might have been hyphenated in the past (e.g., toolbar, hyperlink, and pastebin).
 
-Our goal is therefore to make all lighting correct by default, while giving artists enough freedom to achieve the desired look. We will support a number of lights, split in two categories, direct and indirect lighting:
+Despite decreased use, hyphenation remains the norm in certain compound-modifier constructions and, among some authors, with certain prefixes (see below). Hyphenation is also routinely used as part of syllabification in justified texts to avoid unsightly spacing (especially in columns with narrow line lengths, as when used with newspapers).
 
-Deferred rendering is used by many modern 3D rendering engines to easily support dozens, hundreds or even thousands of light source (amongst other benefits). This method is unfortunately very expensive in terms of bandwidth. With our default PBR material model, our G-buffer would use between 160 and 192 bits per pixel, which would translate directly to rather high bandwidth requirements. Forward rendering methods on the other hand have historically been bad at handling multiple lights. A common implementation is to render the scene multiple times, once per visible light, and to blend (add) the results. Another technique consists in assigning a fixed maximum of lights to each object in the scene. This is however impractical when objects occupy a vast amount of space in the world (building, road, etc.).
-
-Tiled shading can be applied to both forward and deferred rendering methods."""
+When flowing text, it is sometimes preferable to break a word into two so that it continues on another line rather than moving the entire word to the next line. The word may be divided at the nearest break point between syllables (syllabification) and a hyphen inserted to indicate that the letters form a word fragment, rather than a full word. This allows more efficient use of paper, allows flush appearance of right-side margins (justification) without oddly large word spaces, and decreases the problem of rivers. This kind of hyphenation is most useful when the width of the column (called the "line length" in typography) is very narrow."""
 //endregion
 
 class ComboBreakerActivity : ComponentActivity() {
@@ -91,7 +89,8 @@ class ComboBreakerActivity : ComponentActivity() {
     @Composable
     private fun Page() {
         val bitmap1 = remember {
-            BitmapFactory.decodeResource(resources, R.drawable.microphone).let {
+            BitmapFactory.decodeResource(resources, R.drawable.microphone)
+            .let {
                 Bitmap.createScaledBitmap(it, it.width / 2, it.height / 2, true)
             }
         }
@@ -135,7 +134,7 @@ class ComboBreakerActivity : ComponentActivity() {
                         contentDescription = "",
                         modifier = Modifier
                             .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
-                            .flowShape(FlowType.OutsideEnd, 10.dp, shape1)
+                            .flowShape(FlowType.OutsideEnd, 6.dp, shape1)
                     )
 
                     Image(
@@ -143,7 +142,7 @@ class ComboBreakerActivity : ComponentActivity() {
                         contentDescription = "",
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .flowShape(FlowType.Outside, 10.dp, shape2)
+                            .flowShape(FlowType.Outside, 6.dp, shape2)
                     )
                 }
 

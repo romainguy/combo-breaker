@@ -36,6 +36,12 @@ fun Bitmap.toContour(
     val w = width
     val h = height
 
+    if (!hasAlpha()) {
+        return Path().apply {
+            addRect(0.0f, 0.0f, w.toFloat(), h.toFloat(), Path.Direction.CW)
+        }
+    }
+
     val pixels = IntArray(w * h)
     getPixels(pixels, 0, w, 0, 0, w, h)
 
