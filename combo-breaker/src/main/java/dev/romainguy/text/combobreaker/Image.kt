@@ -48,7 +48,6 @@ internal fun direction(pixels: IntArray, index: Int, stride: Int, threshold: Int
 }
 
 fun Bitmap.toContour(
-    margin: Float = 0.0f,
     alphaThreshold: Float = 0.0f
 ): Path {
     val w = width
@@ -102,16 +101,6 @@ fun Bitmap.toContour(
         pm = m
 
         if (index == start) break
-    }
-
-    // TODO: Simplification step based on a given tolerance
-
-    if (margin > 0.0f) {
-        // NOTE: This creates an expensive path for later operations
-        Paint().apply {
-            style = Paint.Style.FILL_AND_STROKE
-            strokeWidth = margin * 2.0f
-        }.getFillPath(path, path)
     }
 
     return path
