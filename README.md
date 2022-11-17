@@ -39,12 +39,14 @@ will produce this result:
 As you can see, any child of `TextFlow` allows text to flow around a rectangular shape of the same
 dimensions of the child. The `flowShape` modifier is used to control where text flows around the
 shape (to the right/end of the T) and around both the left and right sides of the landscape photo
-(default behavior).
+(default behavior). In addition, you can define a margin around the shape.
 
 The `flowShape` modifier also lets you specify a specific shape instead of a default rectangle.
 This can be done by passing a `Path` or a lambda that returns a `Path`. The lambda alternative
 is useful when you need to create a `Path` based on the dimensions of the `TextFlow` or the
-dimensions of its child:
+dimensions of its child.
+
+Here is an example of a `TextFlow` using non-rectangular shapes:
 
 ```kotlin
 val microphoneShape = microphoneBitmap.toContour(alphaThreshold = 0.5f).asComposePath()
