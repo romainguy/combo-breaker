@@ -634,8 +634,8 @@ interface TextFlowScope {
      */
     @Stable
     fun Modifier.flowShape(
-        margin: Dp = 0.dp,
         flowType: FlowType = Outside,
+        margin: Dp = 0.dp,
         flowShape: FlowShapeProvider
     ): Modifier
 }
@@ -659,16 +659,16 @@ private object TextFlowScopeInstance : TextFlowScope {
 
     @Stable
     override fun Modifier.flowShape(flowType: FlowType, margin: Dp, flowShape: Path?) = this.then(
-        FlowShapeModifier(margin, flowType) { _, _ -> flowShape }
+        FlowShapeModifier(flowType, margin) { _, _ -> flowShape }
     )
 
     @Stable
     override fun Modifier.flowShape(
-        margin: Dp,
         flowType: FlowType,
+        margin: Dp,
         flowShape: FlowShapeProvider
     ) = this.then(
-        FlowShapeModifier(margin, flowType, flowShape)
+        FlowShapeModifier(flowType, margin, flowShape)
     )
 }
 
@@ -712,8 +712,8 @@ private class AlignmentAndSizeModifier(
 }
 
 private class FlowShapeModifier(
-    val margin: Dp,
     val flowType: FlowType,
+    val margin: Dp,
     val flowShape: FlowShapeProvider
 ) : ParentDataModifier, OnPlacedModifier {
     var localParentData: TextFlowParentData? = null

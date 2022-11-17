@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.LayoutDirection
@@ -137,7 +138,7 @@ class ComboBreakerActivity : ComponentActivity() {
                         contentDescription = "",
                         modifier = Modifier
                             .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
-                            .flowShape(10.dp, FlowType.OutsideEnd) { _, _ -> shape1 }
+                            .flowShape(FlowType.OutsideEnd, 10.dp, shape1)
                     )
 
                     Image(
@@ -145,7 +146,7 @@ class ComboBreakerActivity : ComponentActivity() {
                         contentDescription = "",
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .flowShape(10.dp, FlowType.Outside) { _, _ -> shape2 }
+                            .flowShape(FlowType.Outside, 10.dp, shape2)
                     )
                 }
 
