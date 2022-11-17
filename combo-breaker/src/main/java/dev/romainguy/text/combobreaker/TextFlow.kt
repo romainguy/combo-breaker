@@ -71,6 +71,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toOffset
 import androidx.compose.ui.unit.toSize
 import androidx.core.graphics.PathSegment
+import dev.romainguy.text.combobreaker.FlowType.None
+import dev.romainguy.text.combobreaker.FlowType.Outside
+import dev.romainguy.text.combobreaker.FlowType.OutsideEnd
+import dev.romainguy.text.combobreaker.FlowType.OutsideLeft
+import dev.romainguy.text.combobreaker.FlowType.OutsideRight
+import dev.romainguy.text.combobreaker.FlowType.OutsideStart
 import kotlin.math.max
 
 /**
@@ -157,6 +163,15 @@ enum class TextFlowHyphenation {
 }
 
 /**
+ * Holds the result of a layout pass performed by [layoutTextFlow].
+ *
+ * @param height The total height of the text after layout.
+ * @param lastOffset Offset inside the source text marking the point where the layout stopped.
+ * Any text after that offset was not laid out.
+ */
+data class TextFlowLayoutResult(val height: Float, val lastOffset: Int)
+
+/**
  * A layout composable with [content] that can flow [text] around the shapes defined by the
  * elements of [content].
  *
@@ -199,6 +214,7 @@ enum class TextFlowHyphenation {
  * @param hyphenation Sets the type of text hyphenation (only on supported API levels).
  * @param columns The desired number of columns to layout [text] with.
  * @param columnSpacing The amount of space between two adjacent columns.
+ * @param onTextFlowLayoutResult Will be invoked with information about the text layout.
  * @param contentAlignment The default alignment inside the layout.
  * @param propagateMinConstraints Whether the incoming min constraints should be passed to content.
  * @param debugOverlay Used for debugging only.
@@ -214,6 +230,7 @@ fun TextFlow(
     hyphenation: TextFlowHyphenation = TextFlowHyphenation.Auto,
     columns: Int = 1,
     columnSpacing: Dp = 16.dp,
+    onTextFlowLayoutResult: (result: TextFlowLayoutResult) -> Unit = { },
     contentAlignment: Alignment = Alignment.TopStart,
     propagateMinConstraints: Boolean = false,
     debugOverlay: Boolean = false,
@@ -307,7 +324,7 @@ fun TextFlow(
 
             textLines.clear()
 
-            layoutTextFlow(
+            val result = layoutTextFlow(
                 text,
                 selfSize,
                 columns,
@@ -319,6 +336,8 @@ fun TextFlow(
                 flowShapes,
                 textLines
             )
+
+            onTextFlowLayoutResult(result)
 
             // We don't need to keep all this data when the overlay isn't present
             if (!debugOverlay) flowShapes.clear()
@@ -432,7 +451,7 @@ private fun buildFlowShape(
     // We ignore flow shapes marked "None". We could run all the code below and it
     // would work just fine since findFlowSlots() will do the right thing, but
     // it would be expensive and wasteful so let's not do that
-    if (textFlowData.flowType == FlowType.None) {
+    if (textFlowData.flowType == None) {
         return
     }
 
@@ -588,7 +607,7 @@ interface TextFlowScope {
      */
     @Stable
     fun Modifier.flowShape(
-        flowType: FlowType = FlowType.Outside,
+        flowType: FlowType = Outside,
         margin: Dp = 0.dp,
         flowShape: Path? = null
     ): Modifier
@@ -608,7 +627,7 @@ interface TextFlowScope {
     @Stable
     fun Modifier.flowShape(
         margin: Dp = 0.dp,
-        flowType: FlowType = FlowType.Outside,
+        flowType: FlowType = Outside,
         flowShape: FlowShapeProvider
     ): Modifier
 }
@@ -733,7 +752,7 @@ private data class TextFlowParentData(
     var alignment: Alignment = Alignment.TopStart,
     var matchParentSize: Boolean = false,
     var margin: Dp = 0.dp,
-    var flowType: FlowType = FlowType.Outside,
+    var flowType: FlowType = Outside,
     var flowShape: FlowShapeProvider = { _, _ -> null },
     var position: Offset = Offset.Unspecified
 )

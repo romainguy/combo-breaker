@@ -23,6 +23,7 @@ import android.os.Build
 import android.text.TextPaint
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.max
 
 /**
  * Internal representation of a line of text computed by the text flow layout algorithm
@@ -75,6 +76,7 @@ internal class TextLine(
  * @param hyphenation Sets the type of text hyphenation (only on supported API levels).
  * @param flowShapes The list of shapes to flow text around.
  * @param lines List of lines where the resulting layout will be stored.
+ * @return A [TextFlowLayoutResult] giving information about how [text] was laid out.
  */
 internal fun layoutTextFlow(
     text: String,
@@ -87,7 +89,7 @@ internal fun layoutTextFlow(
     hyphenation: TextFlowHyphenation,
     flowShapes: ArrayList<FlowShape>,
     lines: MutableList<TextLine>
-) {
+): TextFlowLayoutResult {
     val lineBreaker = LineBreaker.Builder()
         .setBreakStrategy(LineBreaker.BREAK_STRATEGY_HIGH_QUALITY)
         .setHyphenationFrequency(LineBreaker.HYPHENATION_FREQUENCY_FULL)
@@ -120,6 +122,9 @@ internal fun layoutTextFlow(
     // to start reading text for our next text line
     var breakOffset = 0
 
+    var textHeight = 0.0f
+    var totalOffset = 0
+
     for (c in 0 until columnCount) {
         // Cursor to indicate where to draw the next line of text
         var y = 0.0f
@@ -131,6 +136,8 @@ internal fun layoutTextFlow(
             if (paragraph.isEmpty()) {
                 y += lineHeight
                 currentParagraph++
+                breakOffset = 0
+                totalOffset++
                 continue
             }
 
@@ -261,6 +268,8 @@ internal fun layoutTextFlow(
                         )
                     )
 
+                    textHeight = max(textHeight, y + descent)
+
                     // Increase our current offset in side the paragraph
                     breakOffset += lineOffset
 
@@ -281,6 +290,7 @@ internal fun layoutTextFlow(
             // Reached the end of the paragraph, move to the next one
             if (breakOffset >= paragraph.length) {
                 currentParagraph++
+                totalOffset += breakOffset + 1
                 breakOffset = 0
             }
 
@@ -290,6 +300,8 @@ internal fun layoutTextFlow(
 
         column.offset((column.width() + columnSpacing) * if (ltr) 1.0f else -1.0f, 0.0f)
     }
+
+    return TextFlowLayoutResult(textHeight, totalOffset + breakOffset)
 }
 
 /**
