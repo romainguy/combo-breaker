@@ -33,6 +33,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -86,9 +88,14 @@ class ComboBreakerActivity : ComponentActivity() {
                 Bitmap.createScaledBitmap(it, it.width / 2, it.height / 2, true)
             }
         }
+        val shape1 by remember {
+            derivedStateOf { bitmap1.toContour(alphaThreshold = 0.5f).asComposePath() }
+        }
+
         val bitmap2 = remember { BitmapFactory.decodeResource(resources, R.drawable.badge) }
-        val bitmap3 = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape1) }
-        val bitmap4 = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape2) }
+        val shape2 by remember {
+            derivedStateOf { bitmap2.toContour().asComposePath() }
+        }
 
         val showDebugOverlay = remember { mutableStateOf(true) }
 
@@ -100,27 +107,12 @@ class ComboBreakerActivity : ComponentActivity() {
                 columns = 2,
                 debugOverlay = showDebugOverlay.value
             ) {
-//                Image(
-//                    bitmap = bitmap3.asImageBitmap(),
-//                    contentDescription = "",
-//                    modifier = Modifier.flowShape(margin = 8.dp)
-//                )
-//                Image(
-//                    bitmap = bitmap4.asImageBitmap(),
-//                    contentDescription = "",
-//                    modifier = Modifier
-//                        .align(Alignment.TopEnd)
-//                        .flowShape(margin = 8.dp)
-//                )
-
                 Image(
                     bitmap = bitmap1.asImageBitmap(),
                     contentDescription = "",
                     modifier = Modifier
                         .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
-                        .flowShape(10.dp, FlowType.OutsideEnd) { _, _ ->
-                            bitmap1.toContour(alphaThreshold = 0.5f).asComposePath()
-                        }
+                        .flowShape(10.dp, FlowType.OutsideEnd) { _, _ -> shape1 }
                 )
 
                 Image(
@@ -129,9 +121,7 @@ class ComboBreakerActivity : ComponentActivity() {
                     modifier = Modifier
                         .align(Alignment.Center)
                         .offset { Offset(0.0f, -bitmap2.height / 3.0f).round() }
-                        .flowShape(10.dp, FlowType.Outside) { _, _ ->
-                            bitmap2.toContour().asComposePath()
-                        }
+                        .flowShape(10.dp, FlowType.Outside) { _, _ -> shape2 }
                 )
 
                 Row(
