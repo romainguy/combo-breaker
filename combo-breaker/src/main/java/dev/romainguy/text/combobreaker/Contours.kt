@@ -16,6 +16,7 @@
 
 package dev.romainguy.text.combobreaker
 
+import android.graphics.Path
 import kotlin.math.cos
 import kotlin.math.sqrt
 
@@ -160,6 +161,22 @@ internal class Contour(x: Float, y: Float, capacity: Int = 64) {
         val oldCount = count
         count = newCount
         return oldCount
+    }
+
+    /**
+     * Converts this contour to a [Path], adding to the existing [path] is specified,
+     * otherwise creates a new one and adds to that new [Path].
+     */
+    fun toPath(path: Path = Path()): Path {
+        val p = points
+        path.moveTo(p[0], p[1])
+
+        for (j in 1 until count) {
+            val index = j * 2
+            path.lineTo(p[index], p[index + 1])
+        }
+
+        return path
     }
 }
 

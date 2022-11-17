@@ -88,24 +88,12 @@ fun Bitmap.toContour(
         }
     }
 
-    // TODO: Return a list of paths
     val path = Path()
     val size = contours.size
     for (i in 0 until size) {
-        val contour = if (minAngle < 1.0f)
-            contours[i]
-        else
-            contours[i].simplify(minAngle)
-
-        val points = contour.points[0]
-        path.moveTo(points, contour.points[1])
-
-        for (j in 1 until contour.count) {
-            val index = j * 2
-            path.lineTo(contour.points[index], contour.points[index + 1])
-        }
+        val contour = if (minAngle < 1.0f) contours[i] else contours[i].simplify(minAngle)
+        contour.toPath(path)
     }
-
     return path
 }
 
