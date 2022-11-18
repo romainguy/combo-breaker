@@ -1,4 +1,4 @@
-# combo-breaker
+# Combo Breaker
 
 [![combo-breaker](https://maven-badges.herokuapp.com/maven-central/dev.romainguy/combo-breaker/badge.svg?subject=combo-breaker)](https://maven-badges.herokuapp.com/maven-central/dev.romainguy/combo-breaker)
 [![Android build status](https://github.com/romainguy/combo-breaker/workflows/Android/badge.svg)](https://github.com/romainguy/combo-breaker/actions?query=workflow%3AAndroid)
