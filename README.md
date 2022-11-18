@@ -61,7 +61,7 @@ TextFlow(
         bitmap = microphoneBitmap.asImageBitmap(),
         contentDescription = "",
         modifier = Modifier
-            .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
+            .offset { Offset(-microphoneBitmap.width / 4.5f, 0.0f).round() }
             .flowShape(FlowType.OutsideEnd, 6.dp, microphoneShape)
     )
 
