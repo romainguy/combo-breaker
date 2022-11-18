@@ -99,9 +99,6 @@ private fun intersection(p1: PointF, p2: PointF, r: RectF, clip: Int, out: Point
         return
     }
 
-    // NOTE: Left and right clipping isn't necessary when we clip the source paths, it will
-    //       however be necessary if we want to support "centered" shapes instead of just
-    //       left/right floats
     if ((clip and ClipLeft) != 0) {
         out.set(r.left, p1.y + sx * (r.left - p1.x))
         return
