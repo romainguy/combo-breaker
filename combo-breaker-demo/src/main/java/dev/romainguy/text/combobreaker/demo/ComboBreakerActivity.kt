@@ -31,12 +31,16 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,12 +51,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
-import androidx.compose.ui.unit.sp
 import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.TextFlow
 import dev.romainguy.text.combobreaker.TextFlowHyphenation
@@ -75,13 +75,8 @@ class ComboBreakerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            ComboBreakerTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    Page()
-                }
+            MaterialDemoSetup {
+                Page()
             }
         }
     }
@@ -104,84 +99,126 @@ class ComboBreakerActivity : ComponentActivity() {
         }
 
         var columns by remember { mutableStateOf(2) }
-        var justify by remember { mutableStateOf(true) }
-        var hyphens by remember { mutableStateOf(true) }
-        var showDebugOverlay by remember { mutableStateOf(true) }
+        var isJustified by remember { mutableStateOf(true) }
+        var isHyphenated by remember { mutableStateOf(true) }
+        var isDebugOverlayEnabled by remember { mutableStateOf(true) }
 
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                TextFlow(
-                    SampleText,
+        val justification by remember {
+            derivedStateOf {
+                if (isJustified) {
+                    TextFlowJustification.Auto
+                } else {
+                    TextFlowJustification.None
+                }
+            }
+        }
+        val hyphenation by remember {
+            derivedStateOf {
+                if (isHyphenated) {
+                    TextFlowHyphenation.Auto
+                } else {
+                    TextFlowHyphenation.None
+                }
+            }
+        }
+
+        Column(modifier = Modifier.padding(16.dp)) {
+            TextFlow(
+                SampleText,
+                modifier = Modifier
+                    .weight(1.0f)
+                    .fillMaxWidth(),
+                style = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
+                justification = justification,
+                hyphenation = hyphenation,
+                columns = columns,
+                debugOverlay = isDebugOverlayEnabled
+            ) {
+                Image(
+                    bitmap = bitmap1.asImageBitmap(),
+                    contentDescription = "",
                     modifier = Modifier
-                        .weight(1.0f)
-                        .fillMaxWidth(),
-                    style = TextStyle(fontSize = 14.sp),
-                    justification = if (justify) {
-                        TextFlowJustification.Auto
-                    } else {
-                        TextFlowJustification.None
-                    },
-                    hyphenation = if (hyphens) {
-                        TextFlowHyphenation.Auto
-                    } else {
-                        TextFlowHyphenation.None
-                    },
-                    columns = columns,
-                    debugOverlay = showDebugOverlay
-                ) {
-                    Image(
-                        bitmap = bitmap1.asImageBitmap(),
-                        contentDescription = "",
-                        modifier = Modifier
-                            .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
-                            .flowShape(FlowType.OutsideEnd, 8.dp, shape1)
+                        .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
+                        .flowShape(FlowType.OutsideEnd, 8.dp, shape1)
+                )
+
+                Image(
+                    bitmap = bitmap2.asImageBitmap(),
+                    contentDescription = "",
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .flowShape(FlowType.Outside, 10.dp, shape2)
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "Columns")
+                Spacer(modifier = Modifier.width(8.dp))
+                Slider(
+                    modifier = Modifier.weight(0.1f),
+                    value = columns.toFloat(),
+                    onValueChange = { value -> columns = value.toInt() },
+                    valueRange = 1.0f..4.0f
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            DemoControls(
+                isJustified, { isJustified = it},
+                isHyphenated, { isHyphenated = it},
+                isDebugOverlayEnabled, { isDebugOverlayEnabled = it},
+            )
+        }
+    }
+
+    @Composable
+    private fun DemoControls(
+        justify: Boolean,
+        onJustifyChanged: (Boolean) -> Unit,
+        hyphenation: Boolean,
+        onHyphenationChanged: (Boolean) -> Unit,
+        debugOverlay: Boolean,
+        onDebugOverlayChanged: (Boolean) -> Unit,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = justify, onCheckedChange = onJustifyChanged)
+            Text(text = "Justify")
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Checkbox(checked = hyphenation, onCheckedChange = onHyphenationChanged)
+            Text(text = "Hyphenate")
+
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Checkbox(checked = debugOverlay, onCheckedChange = onDebugOverlayChanged)
+            Text(text = "Debug")
+        }
+    }
+
+    @Composable
+    @OptIn(ExperimentalMaterial3Api::class)
+    private fun MaterialDemoSetup(content: @Composable () -> Unit) {
+        ComboBreakerTheme {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Combo Breaker Demo") },
+                        colors = TopAppBarDefaults.mediumTopAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            titleContentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     )
-
-                    Image(
-                        bitmap = bitmap2.asImageBitmap(),
-                        contentDescription = "",
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .flowShape(FlowType.Outside, 10.dp, shape2)
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Columns")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Slider(
-                        modifier = Modifier.weight(0.1f),
-                        value = columns.toFloat(),
-                        onValueChange = { value -> columns = value.toInt() },
-                        valueRange = 1.0f..4.0f
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = justify,
-                        onCheckedChange = { justify = it }
-                    )
-                    Text(text = "Justify")
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Checkbox(
-                        checked = hyphens,
-                        onCheckedChange = { hyphens = it }
-                    )
-                    Text(text = "Hyphenate")
-
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Checkbox(
-                        checked = showDebugOverlay,
-                        onCheckedChange = { showDebugOverlay = it }
-                    )
-                    Text(text = "Debug")
-                }
+                },
+            ) { padding ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues = padding),
+                    color = MaterialTheme.colorScheme.surface,
+                    content = content
+                )
             }
         }
     }

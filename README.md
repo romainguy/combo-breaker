@@ -99,6 +99,7 @@ dependencies {
 
 - Backport to earlier API levels.
 - Optimizations!
+- More comprehensive `TextFlowLayoutResult`.
 - Paths with multiple contours are treated as a single shape. A future feature will allow such
   paths to be treated as multiple shapes.
 - Only one `TextStyle` is supported. Support for multiple text styles (at least one per paragraph)
