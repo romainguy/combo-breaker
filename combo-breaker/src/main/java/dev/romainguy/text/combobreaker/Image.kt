@@ -20,7 +20,6 @@ import android.graphics.Bitmap
 import android.graphics.Path
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.system.measureNanoTime
 
 /**
  * Extract the contours of this [Bitmap] as a [Path]. The contours are traced by following opaque
@@ -28,22 +27,27 @@ import kotlin.system.measureNanoTime
  * specified [alphaThreshold] is considered opaque.
  *
  * After the contours are built, a simplification pass is performed to reduce the complexity of the
- * paths. The [minAngle] parameter defines the minimum angle between two angles in the contour
+ * paths. The [minAngle] parameter defines the minimum angle between two segments in the contour
  * before they are collapsed. For instance, passing a [minAngle] of 45 means that the final path
  * will not contain adjacent segments with an angle greater than 45 degrees.
+ *
+ * @param alphaThreshold Maximum alpha channel a pixel might have before being considered opaque.
+ * This value is between 0.0 and 1.0.
+ * @param minAngle Minimum angle between two segments in the contour before they are collapsed
+ * to simplify the final geometry.
  */
 fun Bitmap.toContour(
     alphaThreshold: Float = 0.0f,
-    minAngle: Float = 15.0f
+    minAngle: Float = 15.0f,
 ): Path {
     val w = width
     val h = height
 
-//    if (!hasAlpha()) {
-//        return Path().apply {
-//            addRect(0.0f, 0.0f, w.toFloat(), h.toFloat(), Path.Direction.CCW)
-//        }
-//    }
+    if (!hasAlpha()) {
+        return Path().apply {
+            addRect(0.0f, 0.0f, w.toFloat(), h.toFloat(), Path.Direction.CCW)
+        }
+    }
 
     val pixels = IntArray(w * h)
     getPixels(pixels, 0, w, 0, 0, w, h)
@@ -55,7 +59,7 @@ fun Bitmap.toContour(
 
     val xmax = (w - 1).toFloat()
     val ymax = (h - 1).toFloat()
-val t = measureNanoTime {
+
     // Pretend we have a guard band to handle opaque pixels at the edges
     for (y in -1 until h) {
         val y0 = max(0.0f, y.toFloat())
@@ -100,14 +104,14 @@ val t = measureNanoTime {
             }
         }
     }
-}
-    android.util.Log.d("Test", "time = ${t / 1_000_000.0f}")
+
     val path = Path()
     val size = contours.size
     for (i in 0 until size) {
         val contour = if (minAngle < 1.0f) contours[i] else contours[i].simplify(minAngle)
         contour.toPath(path)
     }
+
     return path
 }
 
