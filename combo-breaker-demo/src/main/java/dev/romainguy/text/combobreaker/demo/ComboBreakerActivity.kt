@@ -134,7 +134,7 @@ class ComboBreakerActivity : ComponentActivity() {
                         contentDescription = "",
                         modifier = Modifier
                             .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
-                            .flowShape(FlowType.OutsideEnd, 6.dp, shape1)
+                            .flowShape(FlowType.OutsideEnd, 8.dp, shape1)
                     )
 
                     Image(
@@ -142,7 +142,7 @@ class ComboBreakerActivity : ComponentActivity() {
                         contentDescription = "",
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .flowShape(FlowType.Outside, 6.dp, shape2)
+                            .flowShape(FlowType.Outside, 10.dp, shape2)
                     )
                 }
 

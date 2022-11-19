@@ -26,6 +26,9 @@ private inline fun invlength(x: Float, y: Float) = 1.0f / sqrt(x * x + y * y)
 @Suppress("NOTHING_TO_INLINE")
 private inline fun dot(x0: Float, y0: Float, x1: Float, y1: Float) = x0 * x1 + y0 * y1
 
+private const val ContourStorageGrowth = 2.0f
+private const val ContourDefaultStorage = 32
+
 /**
  * A contour is a series of line segments. It can be seen as a simplified version of a Path.
  * We use a custom data structure instead of a Path to avoid JNI transitions and the use of
@@ -39,7 +42,7 @@ private inline fun dot(x0: Float, y0: Float, x1: Float, y1: Float) = x0 * x1 + y
  * @param y The y coordinate of the first point in the contour.
  * @param capacity The default capacity as a number of points.
  */
-internal class Contour(x: Float, y: Float, capacity: Int = 64) {
+internal class Contour(x: Float, y: Float, capacity: Int = ContourDefaultStorage) {
     /**
      * The points making this contour. The size of the array is guaranteed to be greater or
      * equal to [count] * 2. Each point is made of 2 floats in the array, respectively x and y.
@@ -127,20 +130,27 @@ internal class Contour(x: Float, y: Float, capacity: Int = 64) {
             var x1 = simplified.points[index]
             var y1 = simplified.points[index + 1]
 
-            x0 -= x1
-            y0 -= y1
-            val l0 = invlength(x0, y0)
-
-            x1 = x - x1
-            y1 = y - y1
-            val l1 = invlength(x1, y1)
-
-            val cosAngle = dot(x0 * l0, y0 * l0, x1 * l1, y1 * l1)
-            if (cosAngle > minTolerance) {
-                simplified.append(x, y)
-            } else {
-                simplified.points[index] = x
+            // Quick checks for horizontal/vertical cases
+            if (x0 == x && x1 == x) {
                 simplified.points[index + 1] = y
+            } else if (y0 == y && y1 == y) {
+                simplified.points[index] = x
+            } else {
+                x0 -= x1
+                y0 -= y1
+                val l0 = invlength(x0, y0)
+
+                x1 = x - x1
+                y1 = y - y1
+                val l1 = invlength(x1, y1)
+
+                val cosAngle = dot(x0 * l0, y0 * l0, x1 * l1, y1 * l1)
+                if (cosAngle > minTolerance) {
+                    simplified.append(x, y)
+                } else {
+                    simplified.points[index] = x
+                    simplified.points[index + 1] = y
+                }
             }
         }
 
@@ -152,7 +162,7 @@ internal class Contour(x: Float, y: Float, capacity: Int = 64) {
 
     private fun ensureCapacity(newCount: Int): Int {
         if (newCount * 2 > points.size) {
-            val newPoints = FloatArray((newCount * 2.0f * 1.5f).toInt())
+            val newPoints = FloatArray((newCount * 2.0f * ContourStorageGrowth).toInt())
             points.copyInto(newPoints, 0, 0, count * 2)
             points = newPoints
         }
