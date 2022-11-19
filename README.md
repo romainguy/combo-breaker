@@ -91,7 +91,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'dev.romainguy:combo-breaker:0.1.0'
+    implementation 'dev.romainguy:combo-breaker:0.1.1'
 }
 ```
 
