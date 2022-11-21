@@ -85,8 +85,7 @@ class ComboBreakerActivity : ComponentActivity() {
     @Composable
     private fun TextFlowDemo() {
         val microphone = remember {
-            BitmapFactory.decodeResource(resources, R.drawable.microphone)
-            .let {
+            BitmapFactory.decodeResource(resources, R.drawable.microphone).let {
                 Bitmap.createScaledBitmap(it, it.width / 2, it.height / 2, true)
             }
         }
