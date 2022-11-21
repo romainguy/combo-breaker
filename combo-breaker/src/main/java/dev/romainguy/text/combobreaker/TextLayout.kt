@@ -115,52 +115,19 @@ internal fun layoutTextFlow(
         size.height.toFloat()
     )
 
-    var currentParagraph = 0
-    val paragraphs = text.split('\n')
-
-    // Width of the last slot we used for fitting, if we attempt to fit inside a slot of the
-    // same width as last time in the same paragraph, we can skip re-measuring text and line
-    // breaks to speed up layout
-    var lastSlotWidth = Float.NaN
-    // Last break offset in the current paragraph. This offset is relative to the beginning
-    // of [subtext].
-    var lastLineOffset = 0
-    // Current offset inside the paragraph. Because of how LineBreaker works, we sometimes
-    // re-measure the text by using a substring of the paragraph. This tells us where
-    // that substring is in the paragraph. This only gets updated when we re-measure part
-    // of the paragraph.
-    var paragraphOffset = 0
-    // Tracks the offset of the last break in the current paragraph, relative to the beginning
-    // of the paragraph. This is where we want to start reading text for our next measurement.
-    // This offset is updated every time we lay out a chunk of text.
-    var breakOffset = 0
-    // Last line we laid out with the current measure of the current paragraph.
-    var lastParagraphLine = 0
-
-    // Used to measure and break text, initialized here to avoid null checks
-    var measuredText = MeasuredText.Builder(CharArray(1))
-        .appendStyleRun(paint, 1, false)
-        .build()
-    var result: LineBreaker.Result? = null
-
-    // For TextFlowLayoutResult
-    var textHeight = 0.0f
-    var totalOffset = 0
+    val state = TextLayoutState(text, paint)
 
     for (c in 0 until columnCount) {
         // Cursor to indicate where to draw the next line of text
         var y = 0.0f
 
-        while (currentParagraph < paragraphs.size) {
-            val paragraph = paragraphs[currentParagraph]
+        while (state.hasNextParagraph) {
+            val paragraph = state.currentParagraph
 
             // Skip empty paragraphs but advance the cursor to mark empty lines
             if (paragraph.isEmpty()) {
                 y += lineHeight
-                currentParagraph++
-                breakOffset = 0
-                totalOffset++
-                lastSlotWidth = Float.NaN
+                state.nextParagraph()
                 continue
             }
 
@@ -171,7 +138,7 @@ internal fun layoutTextFlow(
 
             // We want to layout text until we've run out of characters in the current paragraph,
             // or we've run out of space in the layout area
-            while (breakOffset < paragraph.length && y < column.height()) {
+            while (state.isInsideParagraph && y < column.height()) {
                 // The first step is to find all the slots in which we could layout text for the
                 // current text line. We currently assume a line of text has a fixed height in
                 // a given paragraph.
@@ -202,38 +169,39 @@ internal fun layoutTextFlow(
                     // Skip empty slots
                     if (constraints.width <= 0) continue
 
-                    if (constraints.width != lastSlotWidth) {
-                        paragraphOffset = breakOffset
+                    if (constraints.width != state.lastSlotWidth) {
+                        state.paragraphOffset = state.breakOffset
                         // We could use toCharArray() with a pre-built array and offset, but
                         // MeasuredText.Build wants styles to cover the entire array, and
                         // LineBreaker therefore expects to compute breaks over the entire array
-                        measuredText = MeasuredText.Builder(paragraph.toCharArray(paragraphOffset))
-                            .appendStyleRun(paint, paragraph.length - paragraphOffset, false)
+                        val charArray = paragraph.toCharArray(state.paragraphOffset)
+                        state.measuredText = MeasuredText.Builder(charArray)
+                            .appendStyleRun(paint, paragraph.length - state.paragraphOffset, false)
                             .hyphenation(hyphenation)
                             .build()
 
-                        result = lineBreaker.computeLineBreaks(measuredText, constraints, 0)
+                        state.result = lineBreaker.computeLineBreaks(
+                            state.measuredText,
+                            constraints,
+                            0
+                        )
 
-                        lastParagraphLine = 0
-                        lastLineOffset = 0
+                        state.lastParagraphLine = 0
+                        state.lastLineOffset = 0
                     }
-                    lastSlotWidth = slot.width()
+                    state.lastSlotWidth = slot.width()
 
+                    val result = state.result
                     checkNotNull(result)
 
-                    val startHyphen = result.getStartLineHyphenEdit(lastParagraphLine)
-                    val endHyphen = result.getEndLineHyphenEdit(lastParagraphLine)
-                    val lineOffset = result.getLineBreakOffset(lastParagraphLine)
-                    val lineWidth = result.getLineWidth(lastParagraphLine)
-
-                    // If this is true, LineBreaker tried too hard to put text in the current slot
-                    // We'll first try to shrink the text and, if we can't, we'll skip the slot and
-                    // move on to the next one
-                    val lineTooWide = lineWidth > constraints.width
+                    val startHyphen = result.getStartLineHyphenEdit(state.lastParagraphLine)
+                    val endHyphen = result.getEndLineHyphenEdit(state.lastParagraphLine)
+                    val lineOffset = result.getLineBreakOffset(state.lastParagraphLine)
+                    val lineWidth = result.getLineWidth(state.lastParagraphLine)
 
                     // Tells us how far to move the cursor for the next line of text
-                    ascent = -result.getLineAscent(lastParagraphLine)
-                    descent = result.getLineDescent(lastParagraphLine)
+                    ascent = -result.getLineAscent(state.lastParagraphLine)
+                    descent = result.getLineDescent(state.lastParagraphLine)
 
                     // Correct ascent for the first line in the paragraph
                     if (first) {
@@ -244,64 +212,27 @@ internal fun layoutTextFlow(
                     // Don't enqueue a new line if we'd lay it out out of bounds
                     if (y  > column.height() || (y + descent) > column.height()) break
 
-                    // Line offset and last line offset relative to the paragraph itself
-                    val paragraphLineOffset = paragraphOffset + lineOffset
-                    val paragraphLastLineOffset = paragraphOffset + lastLineOffset
+                    // Start and end offset of the line relative to the paragraph itself
+                    val startOffset = state.paragraphOffset + state.lastLineOffset
+                    val endOffset = state.paragraphOffset + lineOffset
 
-                    // Implement justification. We only justify when we are not laying out the last
-                    // line of a paragraph (which looks horrible) or if the current line is too wide
-                    // (which could be because LineBreaker entered desperate mode)
-                    var justifyWidth = 0.0f
-                    if (paragraphLineOffset < paragraph.length || lineTooWide) {
-                        // Trim end spaces as needed and figure out how many stretchable spaces we
-                        // can work with to justify or fit our text in the slot
-                        val hasEndHyphen = endHyphen != 0
-
-                        val endOffset = if (hasEndHyphen)
-                            paragraphLineOffset
-                        else
-                            trimEndSpace(paragraph, paragraphOffset, paragraphLineOffset)
-
-                        val stretchableSpaces = countStretchableSpaces(
-                            paragraph,
-                            paragraphLastLineOffset,
-                            endOffset
-                        )
-
-                        // If we found stretchable spaces, we can attempt justification/line
-                        // shrinking, otherwise, and if the line is too wide, we just bail and hope
-                        // the next slot will be large enough for us to work with
-                        if (stretchableSpaces != 0) {
-                            var width = lineWidth
-
-                            // When the line is too wide and we don't have a hyphen, LineBreaker was
-                            // "desperate" to fit the text, so we can't use its text measurement.
-                            // Instead we measure the width ourselves so we can shrink the line with
-                            // negative word spacing
-                            if (lineTooWide && !hasEndHyphen) {
-                                width = measuredText.getWidth(paragraphLastLineOffset, endOffset)
-                            }
-
-                            // Compute the amount of spacing to give to each stretchable space
-                            // Can be positive (justification) or negative (line too wide)
-                            justifyWidth = (constraints.width - width) / stretchableSpaces
-
-                            // Kill justification if the user asked to, but keep line shrinking
-                            // for hyphens and desperate placement
-                            if (justification == TextFlowJustification.None && justifyWidth > 0) {
-                                justifyWidth = 0.0f
-                            }
-                        } else if (lineTooWide) {
-                            continue
-                        }
-                    }
+                    val justifyWidth = justify(
+                        state,
+                        lineWidth,
+                        constraints.width,
+                        paragraph,
+                        startOffset,
+                        endOffset,
+                        endHyphen,
+                        justification
+                    )
 
                     // Enqueue a new text chunk
                     lines.add(
                         TextLine(
                             paragraph,
-                            paragraphLastLineOffset,
-                            paragraphLineOffset,
+                            startOffset,
+                            endOffset,
                             startHyphen,
                             endHyphen,
                             justifyWidth,
@@ -311,14 +242,14 @@ internal fun layoutTextFlow(
                         )
                     )
 
-                    textHeight = max(textHeight, y + descent)
+                    state.textHeight = max(state.textHeight, y + descent)
 
-                    breakOffset += lineOffset - lastLineOffset
-                    lastLineOffset = lineOffset
+                    state.breakOffset = state.paragraphOffset + lineOffset
+                    state.lastLineOffset = lineOffset
 
-                    lastParagraphLine++
+                    state.lastParagraphLine++
 
-                    if (breakOffset >= paragraph.length) break
+                    if (!state.isInsideParagraph) break
                 }
 
                 // If we were not able to find a suitable slot and we haven't found
@@ -333,11 +264,8 @@ internal fun layoutTextFlow(
             }
 
             // Reached the end of the paragraph, move to the next one
-            if (breakOffset >= paragraph.length) {
-                currentParagraph++
-                totalOffset += breakOffset + 1
-                lastSlotWidth = Float.NaN
-                breakOffset = 0
+            if (!state.isInsideParagraph) {
+                state.nextParagraph()
             }
 
             // Early exit if we have more text than area
@@ -347,7 +275,132 @@ internal fun layoutTextFlow(
         column.offset((column.width() + columnSpacing) * if (ltr) 1.0f else -1.0f, 0.0f)
     }
 
-    return TextFlowLayoutResult(textHeight, totalOffset + breakOffset)
+    return TextFlowLayoutResult(state.textHeight, state.totalOffset + state.breakOffset)
+}
+
+/**
+ * Implement justification. We only justify when we are not laying out the last
+ * line of a paragraph (which looks horrible) or if the current line is too wide
+ * (which could be because LineBreaker entered desperate mode).
+ */
+private fun justify(
+    state: TextLayoutState,
+    lineWidth: Float,
+    maxWidth: Float,
+    paragraph: String,
+    paragraphLastLineOffset: Int,
+    paragraphLineOffset: Int,
+    endHyphen: Int,
+    justification: TextFlowJustification
+): Float {
+    var justifyWidth = 0.0f
+
+    // If this is true, LineBreaker tried too hard to put text in the current slot
+    // We'll first try to shrink the text and, if we can't, we'll skip the slot and
+    // move on to the next one
+    val lineTooWide = lineWidth > maxWidth
+
+    if (paragraphLineOffset < paragraph.length || lineTooWide) {
+        // Trim end spaces as needed and figure out how many stretchable spaces we
+        // can work with to justify or fit our text in the slot
+        val hasEndHyphen = endHyphen != 0
+
+        val endOffset = if (hasEndHyphen)
+            paragraphLineOffset
+        else
+            trimEndSpace(paragraph, state.paragraphOffset, paragraphLineOffset)
+
+        val stretchableSpaces = countStretchableSpaces(
+            paragraph,
+            paragraphLastLineOffset,
+            endOffset
+        )
+
+        // If we found stretchable spaces, we can attempt justification/line
+        // shrinking, otherwise, and if the line is too wide, we just bail and hope
+        // the next slot will be large enough for us to work with
+        if (stretchableSpaces != 0) {
+            var width = lineWidth
+
+            // When the line is too wide and we don't have a hyphen, LineBreaker was
+            // "desperate" to fit the text, so we can't use its text measurement.
+            // Instead we measure the width ourselves so we can shrink the line with
+            // negative word spacing
+            if (lineTooWide && !hasEndHyphen) {
+                width = state.measuredText.getWidth(
+                    paragraphLastLineOffset,
+                    endOffset
+                )
+            }
+
+            // Compute the amount of spacing to give to each stretchable space
+            // Can be positive (justification) or negative (line too wide)
+            justifyWidth = (maxWidth - width) / stretchableSpaces
+
+            // Kill justification if the user asked to, but keep line shrinking
+            // for hyphens and desperate placement
+            if (justification == TextFlowJustification.None && justifyWidth > 0) {
+                justifyWidth = 0.0f
+            }
+        } else if (lineTooWide) {
+            return Float.NaN
+        }
+    }
+    return justifyWidth
+}
+
+private class TextLayoutState(text: String, paint: TextPaint) {
+    private val paragraphs = text.split('\n')
+
+    private var _currentParagraph = 0
+    inline val currentParagraph: String
+        get() = paragraphs[_currentParagraph]
+
+    // Width of the last slot we used for fitting, if we attempt to fit inside a slot of the
+    // same width as last time in the same paragraph, we can skip re-measuring text and line
+    // breaks to speed up layout
+    var lastSlotWidth = Float.NaN
+
+    // Last break offset in the current paragraph. This offset is relative to the beginning
+    // of [subtext].
+    var lastLineOffset = 0
+
+    // Current offset inside the paragraph. Because of how LineBreaker works, we sometimes
+    // re-measure the text by using a substring of the paragraph. This tells us where
+    // that substring is in the paragraph. This only gets updated when we re-measure part
+    // of the paragraph.
+    var paragraphOffset = 0
+
+    // Tracks the offset of the last break in the current paragraph, relative to the beginning
+    // of the paragraph. This is where we want to start reading text for our next measurement.
+    // This offset is updated every time we lay out a chunk of text.
+    var breakOffset = 0
+
+    // Last line we laid out with the current measure of the current paragraph.
+    var lastParagraphLine = 0
+
+    // Used to measure and break text, initialized here to avoid null checks
+    var measuredText = MeasuredText.Builder(CharArray(1))
+        .appendStyleRun(paint, 1, false)
+        .build()
+    var result: LineBreaker.Result? = null
+
+    // For TextFlowLayoutResult
+    var textHeight = 0.0f
+    var totalOffset = 0
+
+    inline val hasNextParagraph: Boolean
+        get() = _currentParagraph < paragraphs.size
+
+    inline val isInsideParagraph: Boolean
+        get() = breakOffset < currentParagraph.length
+
+    fun nextParagraph() {
+        _currentParagraph++
+        totalOffset += breakOffset + 1
+        breakOffset = 0
+        lastSlotWidth = Float.NaN
+    }
 }
 
 /**
