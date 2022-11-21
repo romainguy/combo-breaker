@@ -138,7 +138,6 @@ internal fun layoutTextFlow(
     var lastParagraphLine = 0
 
     // Used to measure and break text, initialized here to avoid null checks
-    var subtext = text
     var measuredText = MeasuredText.Builder(CharArray(1))
         .appendStyleRun(paint, 1, false)
         .build()
@@ -205,12 +204,11 @@ internal fun layoutTextFlow(
 
                     if (constraints.width != lastSlotWidth) {
                         paragraphOffset = breakOffset
-                        subtext = paragraph.substring(breakOffset)
                         // We could use toCharArray() with a pre-built array and offset, but
                         // MeasuredText.Build wants styles to cover the entire array, and
                         // LineBreaker therefore expects to compute breaks over the entire array
-                        measuredText = MeasuredText.Builder(subtext.toCharArray())
-                            .appendStyleRun(paint, subtext.length, false)
+                        measuredText = MeasuredText.Builder(paragraph.toCharArray(paragraphOffset))
+                            .appendStyleRun(paint, paragraph.length - paragraphOffset, false)
                             .hyphenation(hyphenation)
                             .build()
 
@@ -246,18 +244,29 @@ internal fun layoutTextFlow(
                     // Don't enqueue a new line if we'd lay it out out of bounds
                     if (y  > column.height() || (y + descent) > column.height()) break
 
+                    // Line offset and last line offset relative to the paragraph itself
+                    val paragraphLineOffset = paragraphOffset + lineOffset
+                    val paragraphLastLineOffset = paragraphOffset + lastLineOffset
+
                     // Implement justification. We only justify when we are not laying out the last
                     // line of a paragraph (which looks horrible) or if the current line is too wide
                     // (which could be because LineBreaker entered desperate mode)
                     var justifyWidth = 0.0f
-                    if (lineOffset < subtext.length || lineTooWide) {
+                    if (paragraphLineOffset < paragraph.length || lineTooWide) {
                         // Trim end spaces as needed and figure out how many stretchable spaces we
                         // can work with to justify or fit our text in the slot
                         val hasEndHyphen = endHyphen != 0
-                        val endOffset =
-                            if (hasEndHyphen) lineOffset else trimEndSpace(subtext, lineOffset)
-                        val stretchableSpaces =
-                            countStretchableSpaces(subtext, lastLineOffset, endOffset)
+
+                        val endOffset = if (hasEndHyphen)
+                            paragraphLineOffset
+                        else
+                            trimEndSpace(paragraph, paragraphOffset, paragraphLineOffset)
+
+                        val stretchableSpaces = countStretchableSpaces(
+                            paragraph,
+                            paragraphLastLineOffset,
+                            endOffset
+                        )
 
                         // If we found stretchable spaces, we can attempt justification/line
                         // shrinking, otherwise, and if the line is too wide, we just bail and hope
@@ -270,7 +279,7 @@ internal fun layoutTextFlow(
                             // Instead we measure the width ourselves so we can shrink the line with
                             // negative word spacing
                             if (lineTooWide && !hasEndHyphen) {
-                                width = measuredText.getWidth(lastLineOffset, endOffset)
+                                width = measuredText.getWidth(paragraphLastLineOffset, endOffset)
                             }
 
                             // Compute the amount of spacing to give to each stretchable space
@@ -291,8 +300,8 @@ internal fun layoutTextFlow(
                     lines.add(
                         TextLine(
                             paragraph,
-                            paragraphOffset + lastLineOffset,
-                            paragraphOffset + lineOffset,
+                            paragraphLastLineOffset,
+                            paragraphLineOffset,
                             startHyphen,
                             endHyphen,
                             justifyWidth,
@@ -369,9 +378,9 @@ private fun countStretchableSpaces(text: String, start: Int, end: Int): Int {
 /**
  * Returns the offset of the last non-whitespace in a given string, starting from [lineEndOffset].
  */
-private fun trimEndSpace(text: String, lineEndOffset: Int): Int {
+private fun trimEndSpace(text: String, startOffset: Int, lineEndOffset: Int): Int {
     var endOffset = lineEndOffset
-    while (endOffset > 0 && isLineEndSpace(text[endOffset - 1])) {
+    while (endOffset > startOffset && isLineEndSpace(text[endOffset - 1])) {
         endOffset--
     }
     return endOffset
