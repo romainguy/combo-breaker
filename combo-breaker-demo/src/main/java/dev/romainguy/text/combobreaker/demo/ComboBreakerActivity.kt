@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import dev.romainguy.text.combobreaker.FlowType
@@ -76,29 +77,33 @@ class ComboBreakerActivity : ComponentActivity() {
 
         setContent {
             MaterialDemoSetup {
-                Page()
+                TextFlowDemo()
             }
         }
     }
 
     @Composable
-    private fun Page() {
-        val bitmap1 = remember {
+    private fun TextFlowDemo() {
+        val microphone = remember {
             BitmapFactory.decodeResource(resources, R.drawable.microphone)
             .let {
                 Bitmap.createScaledBitmap(it, it.width / 2, it.height / 2, true)
             }
         }
-        val shape1 by remember {
-            derivedStateOf { bitmap1.toContour(alphaThreshold = 0.5f).asComposePath() }
+        val microphoneShape by remember {
+            derivedStateOf { microphone.toContour(alphaThreshold = 0.5f).asComposePath() }
         }
 
-        val bitmap2 = remember { BitmapFactory.decodeResource(resources, R.drawable.badge) }
-        val shape2 by remember {
-            derivedStateOf { bitmap2.toContour().asComposePath() }
+        val badge = remember { BitmapFactory.decodeResource(resources, R.drawable.badge) }
+        val badgeShape by remember {
+            derivedStateOf { badge.toContour().asComposePath() }
         }
+
+        val letterT = remember { BitmapFactory.decodeResource(resources, R.drawable.letter_t) }
+        val landscape = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape) }
 
         var columns by remember { mutableStateOf(2) }
+        var useRectangleShapes by remember { mutableStateOf(false) }
         var isJustified by remember { mutableStateOf(true) }
         var isHyphenated by remember { mutableStateOf(true) }
         var isDebugOverlayEnabled by remember { mutableStateOf(true) }
@@ -135,35 +140,38 @@ class ComboBreakerActivity : ComponentActivity() {
                 debugOverlay = isDebugOverlayEnabled
             ) {
                 Image(
-                    bitmap = bitmap1.asImageBitmap(),
+                    bitmap = (if (useRectangleShapes) letterT else microphone).asImageBitmap(),
                     contentDescription = "",
                     modifier = Modifier
-                        .offset { Offset(-bitmap1.width / 4.5f, 0.0f).round() }
-                        .flowShape(FlowType.OutsideEnd, 8.dp, shape1)
+                        .offset {
+                            if (useRectangleShapes)
+                                IntOffset(0, 0)
+                            else
+                                Offset(-microphone.width / 4.5f, 0.0f).round()
+                        }
+                        .flowShape(
+                            FlowType.OutsideEnd,
+                            if (useRectangleShapes) 0.dp else 8.dp,
+                            if (useRectangleShapes) null else microphoneShape
+                        )
                 )
 
                 Image(
-                    bitmap = bitmap2.asImageBitmap(),
+                    bitmap = (if (useRectangleShapes) landscape else badge).asImageBitmap(),
                     contentDescription = "",
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .flowShape(FlowType.Outside, 10.dp, shape2)
+                        .flowShape(
+                            FlowType.Outside,
+                            if (useRectangleShapes) 6.dp else 10.dp,
+                            if (useRectangleShapes) null else badgeShape
+                        )
                 )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Columns")
-                Spacer(modifier = Modifier.width(8.dp))
-                Slider(
-                    modifier = Modifier.weight(0.1f),
-                    value = columns.toFloat(),
-                    onValueChange = { value -> columns = value.toInt() },
-                    valueRange = 1.0f..4.0f
-                )
-                Spacer(modifier = Modifier.width(8.dp))
             }
 
             DemoControls(
+                columns, { columns = it },
+                useRectangleShapes, { useRectangleShapes = it },
                 isJustified, { isJustified = it},
                 isHyphenated, { isHyphenated = it},
                 isDebugOverlayEnabled, { isDebugOverlayEnabled = it},
@@ -173,6 +181,10 @@ class ComboBreakerActivity : ComponentActivity() {
 
     @Composable
     private fun DemoControls(
+        columns: Int,
+        onColumnsChanged: (Int) -> Unit,
+        useRectangleShapes: Boolean,
+        onRectangleShapesChanged: (Boolean) -> Unit,
         justify: Boolean,
         onJustifyChanged: (Boolean) -> Unit,
         hyphenation: Boolean,
@@ -181,6 +193,21 @@ class ComboBreakerActivity : ComponentActivity() {
         onDebugOverlayChanged: (Boolean) -> Unit,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "Columns")
+            Spacer(modifier = Modifier.width(8.dp))
+            Slider(
+                modifier = Modifier.weight(0.1f),
+                value = columns.toFloat(),
+                onValueChange = { onColumnsChanged(it.toInt()) },
+                valueRange = 1.0f..4.0f
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Checkbox(checked = useRectangleShapes, onCheckedChange = onRectangleShapesChanged)
+            Text(text = "Rectangles")
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = justify, onCheckedChange = onJustifyChanged)
             Text(text = "Justify")
 
@@ -188,7 +215,6 @@ class ComboBreakerActivity : ComponentActivity() {
 
             Checkbox(checked = hyphenation, onCheckedChange = onHyphenationChanged)
             Text(text = "Hyphenate")
-
 
             Spacer(modifier = Modifier.width(8.dp))
 

@@ -401,7 +401,7 @@ fun TextFlow(
                     onDrawWithContent {
                         drawContent()
 
-                        if (debugLinePosition.isFinite()) {
+                        if (debugLinePosition.isFinite() && y2 >= 0.0f && y1 <= size.height) {
                             drawDebugInfo(y1, y2, state.shapes, results, slots, stripeFill)
                         }
                     }
