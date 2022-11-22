@@ -18,15 +18,12 @@ package dev.romainguy.text.combobreaker
 
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Typeface
-import android.text.TextPaint
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.LayoutScopeMarker
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,9 +58,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontSynthesis
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
