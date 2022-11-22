@@ -17,10 +17,19 @@
 package dev.romainguy.text.combobreaker
 
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.graphics.text.LineBreaker
 import android.graphics.text.MeasuredText
 import android.os.Build
 import android.text.TextPaint
+import androidx.compose.runtime.State
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontSynthesis
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.max
@@ -66,30 +75,29 @@ internal class TextLine(
  * (see [TextLine]).
  *
  * @param text The text to layout.
+ * @param style The default style for the text.
  * @param size The size of the area where layout must occur. The resulting text will not
  * extend beyond those dimensions.
  * @param columns Number of columns of text to use in the given area.
  * @param columnSpacing Empty space between columns.
  * @param layoutDirection The RTL or LTR direction of the layout.
- * @param paint The paint to use to measure and render the text.
  * @param justification Sets the type of text justification.
  * @param hyphenation Sets the type of text hyphenation (only on supported API levels).
- * @param flowShapes The list of shapes to flow text around.
- * @param lines List of lines where the resulting layout will be stored.
+ * @param flowState State of the calling TextFlow.
  * @return A [TextFlowLayoutResult] giving information about how [text] was laid out.
  */
 internal fun layoutTextFlow(
-    text: String,
+    text: AnnotatedString,
+    style: TextStyle,
     size: IntSize,
     columns: Int,
     columnSpacing: Float,
     layoutDirection: LayoutDirection,
-    paint: TextPaint,
     justification: TextFlowJustification,
     hyphenation: TextFlowHyphenation,
-    flowShapes: ArrayList<FlowShape>,
-    lines: MutableList<TextLine>
+    flowState: TextFlowSate
 ): TextFlowLayoutResult {
+
     val lineBreaker = LineBreaker.Builder()
         .setBreakStrategy(LineBreaker.BREAK_STRATEGY_HIGH_QUALITY)
         .setHyphenationFrequency(LineBreaker.HYPHENATION_FREQUENCY_FULL)
@@ -97,7 +105,9 @@ internal fun layoutTextFlow(
         .build()
     val constraints = LineBreaker.ParagraphConstraints()
 
-    // TODO: Do this per span/paragraph
+    // TODO: Rethink those two things once we have support for span styles. We probably still
+    //       need support for a default line height anyway.
+    val paint = createTextPaint(flowState.resolver, style, flowState.density)
     val lineHeight = paint.fontMetrics.descent - paint.fontMetrics.ascent
 
     var columnCount = columns.coerceIn(1, Int.MAX_VALUE)
@@ -148,7 +158,7 @@ internal fun layoutTextFlow(
                 val slots = findFlowSlots(
                     RectF(column.left, y, column.right, y + lineHeight),
                     RectF(0.0f, y, size.width.toFloat(), y + lineHeight),
-                    flowShapes
+                    flowState.shapes
                 )
 
                 // Position our cursor to the baseline of the next line, the first time this is
@@ -156,7 +166,7 @@ internal fun layoutTextFlow(
                 y += ascent
 
                 // Remember our number of "lines" to check later if we added new ones
-                val lineCount = lines.size
+                val lineCount = flowState.lines.size
 
                 // We now need to fit as much text as possible for the current paragraph in the list
                 // of slots we just computed
@@ -171,12 +181,13 @@ internal fun layoutTextFlow(
 
                     if (constraints.width != state.lastSlotWidth) {
                         state.paragraphOffset = state.breakOffset
+
                         // We could use toCharArray() with a pre-built array and offset, but
                         // MeasuredText.Build wants styles to cover the entire array, and
                         // LineBreaker therefore expects to compute breaks over the entire array
                         val charArray = paragraph.toCharArray(state.paragraphOffset)
                         state.measuredText = MeasuredText.Builder(charArray)
-                            .appendStyleRun(paint, paragraph.length - state.paragraphOffset, false)
+                            .appendStyleRuns(style, state)
                             .hyphenation(hyphenation)
                             .build()
 
@@ -228,7 +239,7 @@ internal fun layoutTextFlow(
                     )
 
                     // Enqueue a new text chunk
-                    lines.add(
+                    flowState.lines.add(
                         TextLine(
                             paragraph,
                             startOffset,
@@ -255,10 +266,9 @@ internal fun layoutTextFlow(
                 // If we were not able to find a suitable slot and we haven't found
                 // our first line yet, move y forward by the default line height
                 // so we don't loop forever
-                y += if (lineCount == lines.size && ascent == 0.0f && descent == 0.0f) {
+                y += if (lineCount == flowState.lines.size && ascent == 0.0f && descent == 0.0f) {
                     lineHeight
                 } else {
-                    // Move the cursor to the next line
                     descent
                 }
             }
@@ -276,6 +286,15 @@ internal fun layoutTextFlow(
     }
 
     return TextFlowLayoutResult(state.textHeight, state.totalOffset + state.breakOffset)
+}
+
+private fun MeasuredText.Builder.appendStyleRuns(
+    style: TextStyle,
+    state: TextLayoutState
+): MeasuredText.Builder {
+    val paragraph = state.currentParagraph
+    appendStyleRun(state.paint, paragraph.length - state.paragraphOffset, false)
+    return this
 }
 
 /**
@@ -349,8 +368,14 @@ private fun justify(
     return justifyWidth
 }
 
-private class TextLayoutState(text: String, paint: TextPaint) {
+private class TextLayoutState(text: AnnotatedString, val paint: TextPaint) {
     private val paragraphs = text.split('\n')
+
+    private var _paragraphStartOffsets = paragraphs.scan(0) { accumulator, element ->
+        accumulator + element.length
+    }
+    inline val currentParagraphStartOffset: Int
+        get() = _paragraphStartOffsets[_currentParagraph]
 
     private var _currentParagraph = 0
     inline val currentParagraph: String
@@ -446,4 +471,32 @@ private fun MeasuredText.Builder.hyphenation(
         MeasuredTextHelper.hyphenation(this, hyphenation)
     }
     return this
+}
+
+private class TypefaceDirtyTracker(resolveResult: State<Any>) {
+    val initial = resolveResult.value
+    val typeface: Typeface
+        get() = initial as Typeface
+}
+
+internal fun createTextPaint(
+    fontFamilyResolver: FontFamily.Resolver,
+    style: TextStyle,
+    density: Density
+) = TextPaint().apply {
+    val resolvedTypefaces: MutableList<TypefaceDirtyTracker> = mutableListOf()
+    val resolveTypeface: (FontFamily?, FontWeight, FontStyle, FontSynthesis) -> Typeface =
+        { fontFamily, fontWeight, fontStyle, fontSynthesis ->
+            val result = fontFamilyResolver.resolve(
+                fontFamily,
+                fontWeight,
+                fontStyle,
+                fontSynthesis
+            )
+            val holder = TypefaceDirtyTracker(result)
+            resolvedTypefaces.add(holder)
+            holder.typeface
+        }
+    applySpanStyle(style.toSpanStyle(), resolveTypeface, density)
+    isAntiAlias = true
 }

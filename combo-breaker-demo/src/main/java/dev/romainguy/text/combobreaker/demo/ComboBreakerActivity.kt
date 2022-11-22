@@ -51,9 +51,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
+import androidx.compose.ui.unit.sp
 import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.TextFlow
 import dev.romainguy.text.combobreaker.TextFlowHyphenation
@@ -128,7 +133,12 @@ class ComboBreakerActivity : ComponentActivity() {
 
         Column(modifier = Modifier.padding(16.dp)) {
             TextFlow(
-                SampleText,
+                buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append("Combo Breaker Demo\n\n")
+                    }
+                    append(SampleText)
+                },
                 modifier = Modifier
                     .weight(1.0f)
                     .fillMaxWidth(),
