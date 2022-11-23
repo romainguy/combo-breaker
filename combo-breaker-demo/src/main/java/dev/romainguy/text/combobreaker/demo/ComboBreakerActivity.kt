@@ -49,10 +49,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -149,7 +149,7 @@ class ComboBreakerActivity : ComponentActivity() {
         val landscape = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape) }
 
         var columns by remember { mutableStateOf(2) }
-        var useRectangleShapes by remember { mutableStateOf(false) }
+        var useRectangleShapes by remember { mutableStateOf(true) }
         var isJustified by remember { mutableStateOf(true) }
         var isHyphenated by remember { mutableStateOf(true) }
         var isDebugOverlayEnabled by remember { mutableStateOf(true) }
@@ -176,10 +176,8 @@ class ComboBreakerActivity : ComponentActivity() {
         Column(modifier = Modifier.padding(16.dp)) {
             TextFlow(
                 sampleText,
-                modifier = Modifier
-                    .weight(1.0f)
-                    .fillMaxWidth(),
-                style = LocalTextStyle.current.copy(color = colorScheme.onSurface),
+                modifier = Modifier.weight(1.0f).fillMaxWidth(),
+                style =  LocalTextStyle.current.merge(TextStyle(color = colorScheme.onSurface)),
                 justification = justification,
                 hyphenation = hyphenation,
                 columns = columns,

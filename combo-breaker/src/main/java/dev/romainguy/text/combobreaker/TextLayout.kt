@@ -245,25 +245,21 @@ internal fun layoutTextFlow(
                         justification
                     )
 
-                    var cursor = startOffset
-                    var styleIndex = 0
-                    for (i in 0 until state.mergedStyles.size) {
-                        val interval = state.mergedStyles[i]
-                        if (cursor >= interval.start && cursor < interval.end) {
-                            styleIndex = i
-                            break
-                        }
-                    }
+                    // We couldn't fit our text in the available slot, try the next one
+                    if (justifyWidth.isNaN()) continue
 
-                    // TODO: Horizontal positioning is done partially at draw time, which
-                    //       isn't great. We should compute the correct X here but it's made
-                    //       more difficult by justification. We need to count the number of
-                    //       stretchable spaces in each chunk to compute the proper x
+                    // Find the first merged style that intersects our text
+                    var cursor = startOffset
+                    var styleIndex = state.mergedStyles.indexOfFirst { cursor < it.end }
+
+                    var x = x1
                     while (cursor < endOffset) {
                         val interval = state.mergedStyles[styleIndex]
                         val start = max(startOffset, interval.start.toInt())
                         val end = min(endOffset, interval.end.toInt())
                         val lineStyle = interval.data!!
+
+                        val paint = state.paintForStyle(lineStyle)
 
                         flowState.lines.add(
                             TextLine(
@@ -273,11 +269,25 @@ internal fun layoutTextFlow(
                                 if (start == startOffset) startHyphen else 0,
                                 if (end == endOffset) endHyphen else 0,
                                 justifyWidth,
-                                x1,
+                                x,
                                 y,
-                                state.paintForStyle(lineStyle)
+                                paint
                             )
                         )
+
+                        if (justifyWidth != 0.0f) {
+                            with(paint) {
+                                startHyphenEdit = startHyphen
+                                endHyphenEdit = endHyphen
+                                wordSpacing = justifyWidth
+                            }
+                            x += paint.measureText(paragraph, start, end)
+                        } else {
+                            x += state.measuredText.getWidth(
+                                start - state.paragraphOffset,
+                                end - state.paragraphOffset
+                            )
+                        }
 
                         cursor = end
                         styleIndex++
@@ -382,10 +392,7 @@ private fun justify(
             // Instead we measure the width ourselves so we can shrink the line with
             // negative word spacing
             if (lineTooWide && !hasEndHyphen) {
-                width = state.measuredText.getWidth(
-                    paragraphLastLineOffset,
-                    endOffset
-                )
+                width = state.measuredText.getWidth(paragraphLastLineOffset, endOffset)
             }
 
             // Compute the amount of spacing to give to each stretchable space
