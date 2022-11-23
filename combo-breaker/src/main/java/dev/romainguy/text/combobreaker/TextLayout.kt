@@ -24,6 +24,7 @@ import android.os.Build
 import android.text.TextPaint
 import androidx.compose.runtime.State
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Internal representation of a line of text computed by the text flow layout algorithm
@@ -105,11 +107,6 @@ internal fun layoutTextFlow(
         .build()
     val constraints = LineBreaker.ParagraphConstraints()
 
-    // TODO: Rethink those two things once we have support for span styles. We probably still
-    //       need support for a default line height anyway.
-    val paint = createTextPaint(flowState.resolver, style, flowState.density)
-    val lineHeight = paint.fontMetrics.descent - paint.fontMetrics.ascent
-
     var columnCount = columns.coerceIn(1, Int.MAX_VALUE)
     var columnWidth = (size.width.toFloat() - (columns - 1) * columnSpacing) / columnCount
     while (columnWidth <= 0.0f && columnCount > 0) {
@@ -125,7 +122,15 @@ internal fun layoutTextFlow(
         size.height.toFloat()
     )
 
-    val state = TextLayoutState(text, paint)
+    val state = TextLayoutState(
+        text,
+        style,
+        flowState.resolver,
+        flowState.density
+    )
+    // TODO: Rethink those two things once we have support for span styles. We probably still
+    //       need support for a default line height anyway.
+    val lineHeight = state.paint.fontMetrics.descent - state.paint.fontMetrics.ascent
 
     for (c in 0 until columnCount) {
         // Cursor to indicate where to draw the next line of text
@@ -187,7 +192,7 @@ internal fun layoutTextFlow(
                         // LineBreaker therefore expects to compute breaks over the entire array
                         val charArray = paragraph.toCharArray(state.paragraphOffset)
                         state.measuredText = MeasuredText.Builder(charArray)
-                            .appendStyleRuns(style, state)
+                            .appendStyleRuns(state)
                             .hyphenation(hyphenation)
                             .build()
 
@@ -238,20 +243,43 @@ internal fun layoutTextFlow(
                         justification
                     )
 
-                    // Enqueue a new text chunk
-                    flowState.lines.add(
-                        TextLine(
-                            paragraph,
-                            startOffset,
-                            endOffset,
-                            startHyphen,
-                            endHyphen,
-                            justifyWidth,
-                            x1,
-                            y,
-                            paint
+                    var cursor = startOffset
+                    var styleIndex = 0
+                    for (i in 0 until state.mergedStyles.size) {
+                        val interval = state.mergedStyles[i]
+                        if (cursor >= interval.start && cursor < interval.end) {
+                            styleIndex = i
+                            break
+                        }
+                    }
+
+                    // TODO: Horizontal positioning is done partially at draw time, which
+                    //       isn't great. We should compute the correct X here but it's made
+                    //       more difficult by justification. We need to count the number of
+                    //       stretchable spaces in each chunk to compute the proper x
+                    while (cursor < endOffset) {
+                        val interval = state.mergedStyles[styleIndex]
+                        val start = max(startOffset, interval.start.toInt())
+                        val end = min(endOffset, interval.end.toInt())
+                        val lineStyle = interval.data!!
+
+                        flowState.lines.add(
+                            TextLine(
+                                paragraph,
+                                start,
+                                end,
+                                if (start == startOffset) startHyphen else 0,
+                                if (end == endOffset) endHyphen else 0,
+                                justifyWidth,
+                                x1,
+                                y,
+                                state.paintForStyle(lineStyle)
+                            )
                         )
-                    )
+
+                        cursor = end
+                        styleIndex++
+                    }
 
                     state.textHeight = max(state.textHeight, y + descent)
 
@@ -289,11 +317,17 @@ internal fun layoutTextFlow(
 }
 
 private fun MeasuredText.Builder.appendStyleRuns(
-    style: TextStyle,
     state: TextLayoutState
 ): MeasuredText.Builder {
-    val paragraph = state.currentParagraph
-    appendStyleRun(state.paint, paragraph.length - state.paragraphOffset, false)
+    state.currentParagraphStyles().forEach { interval ->
+        if (interval.end > state.paragraphOffset) {
+            val start = max(0, (interval.start - state.paragraphOffset).toInt())
+            val end = (interval.end - state.paragraphOffset).toInt()
+            val style = interval.data!!
+            appendStyleRun(state.paintForStyle(style), end - start, false)
+        }
+    }
+
     return this
 }
 
@@ -368,18 +402,32 @@ private fun justify(
     return justifyWidth
 }
 
-private class TextLayoutState(text: AnnotatedString, val paint: TextPaint) {
+private class TextLayoutState(
+    val text: AnnotatedString,
+    val textStyle: TextStyle,
+    private val resolver: FontFamily.Resolver,
+    private val density: Density
+) {
+    val paint = createTextPaint(resolver, textStyle, density)
+
     private val paragraphs = text.split('\n')
 
     private var _paragraphStartOffsets = paragraphs.scan(0) { accumulator, element ->
-        accumulator + element.length
+        accumulator + element.length + 1
     }
-    inline val currentParagraphStartOffset: Int
+
+    private inline val currentParagraphStartOffset: Int
         get() = _paragraphStartOffsets[_currentParagraph]
 
     private var _currentParagraph = 0
     inline val currentParagraph: String
         get() = paragraphs[_currentParagraph]
+
+    inline val hasNextParagraph: Boolean
+        get() = _currentParagraph < paragraphs.size
+
+    inline val isInsideParagraph: Boolean
+        get() = breakOffset < currentParagraph.length
 
     // Width of the last slot we used for fitting, if we attempt to fit inside a slot of the
     // same width as last time in the same paragraph, we can skip re-measuring text and line
@@ -414,17 +462,99 @@ private class TextLayoutState(text: AnnotatedString, val paint: TextPaint) {
     var textHeight = 0.0f
     var totalOffset = 0
 
-    inline val hasNextParagraph: Boolean
-        get() = _currentParagraph < paragraphs.size
+    val mergedStyles = ArrayList<Interval<TextStyle>>(16)
 
-    inline val isInsideParagraph: Boolean
-        get() = breakOffset < currentParagraph.length
+    val paints = mutableMapOf<TextStyle, TextPaint>()
+
+    private val styleComparator =
+        Comparator { style1: Interval<SpanStyle>, style2: Interval<SpanStyle> ->
+            val start = (style1.start - style2.start).toInt()
+            if (start < 0.0f) -1
+            else if (start == 0) (style2.end - style1.end).toInt()
+            else 1
+        }
 
     fun nextParagraph() {
         _currentParagraph++
         totalOffset += breakOffset + 1
         breakOffset = 0
         lastSlotWidth = Float.NaN
+    }
+
+    fun currentParagraphStyles(): ArrayList<Interval<TextStyle>> {
+        if (paragraphOffset > 0) return mergedStyles
+
+        val paragraph = currentParagraph
+        val offset = currentParagraphStartOffset
+
+        val styleIntervals = IntervalTree<SpanStyle>()
+        text.spanStyles.forEach {
+            styleIntervals += Interval(it.start.toFloat(), it.end.toFloat(), it.item)
+        }
+
+        val searchInternal = Interval<SpanStyle>(
+            offset.toFloat(),
+            (offset + paragraph.length).toFloat()
+        )
+
+        val styles = styleIntervals.findOverlaps(searchInternal).sortedWith(styleComparator)
+
+        mergedStyles.clear()
+        mergedStyles.add(Interval(0.0f, paragraph.length.toFloat(), textStyle))
+
+        val styleCount = styles.size
+        for (j in 0 until styleCount) {
+            val style = styles[j]
+            val start = max(style.start - offset, 0.0f)
+            val end = min(style.end - offset, paragraph.length.toFloat())
+
+            if (start == end) continue
+
+            for (i in 0 until mergedStyles.size) {
+                val merged = mergedStyles[i]
+
+                if (merged.start == merged.end) continue
+
+                val styleData = style.data!!
+                val mergedData = merged.data!!
+
+                if (start <= merged.start && end >= merged.end) {
+                    // The merged style is contained withing the current style
+                    mergedStyles[i] = Interval(merged.start, merged.end, mergedData.merge(styleData))
+                } else if (start >= merged.start && end <= merged.end) {
+                    // The current style is contained withing the merged style
+                    if (end != merged.end) {
+                        mergedStyles.add(i + 1, Interval(end, merged.end, mergedData))
+                    }
+                    mergedStyles.add(i + 1, Interval(start, end, mergedData.merge(styleData)))
+                    if (merged.start != start) {
+                        mergedStyles[i] = Interval(merged.start, start, mergedData)
+                    } else {
+                        mergedStyles.removeAt(i)
+                    }
+                } else if (start < merged.start && end > merged.start) {
+                    // The current style right-intersects with the merged style
+                    mergedStyles[i] = Interval(merged.start, end, mergedData.merge(styleData))
+                    mergedStyles.add(
+                        i + 1,
+                        Interval(start, merged.start, mergedData)
+                    )
+                } else if (start < merged.end && end > merged.end) {
+                    // The current style left-intersects with the merged style
+                    mergedStyles[i] = Interval(merged.start, start, mergedData)
+                    mergedStyles.add(
+                        i + 1,
+                        Interval(start, merged.end, mergedData.merge(styleData))
+                    )
+                }
+            }
+        }
+
+        return mergedStyles
+    }
+
+    fun paintForStyle(style: TextStyle) = paints.computeIfAbsent(style) {
+        createTextPaint(resolver, style, density)
     }
 }
 

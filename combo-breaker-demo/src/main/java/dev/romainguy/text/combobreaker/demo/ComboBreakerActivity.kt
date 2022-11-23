@@ -49,31 +49,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
+import androidx.compose.ui.unit.sp
 import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.TextFlow
 import dev.romainguy.text.combobreaker.TextFlowHyphenation
 import dev.romainguy.text.combobreaker.TextFlowJustification
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
 import dev.romainguy.text.combobreaker.toContour
-
-//region Sample text
-const val SampleText = """The English language does not have definitive hyphenation rules, though various style guides provide detailed usage recommendations and have a significant amount of overlap in what they advise. Hyphens are mostly used to break single words into parts or to join ordinarily separate words into single words. Spaces are not placed between a hyphen and either of the elements it connects except when using a suspended or "hanging" hyphen that stands in for a repeated word (e.g., nineteenth- and twentieth-century writers). Style conventions that apply to hyphens (and dashes) have evolved to support ease of reading in complex constructions; editors often accept deviations if they aid rather than hinder easy comprehension.
-
-The use of the hyphen in English compound nouns and verbs has, in general, been steadily declining. Compounds that might once have been hyphenated are increasingly left with spaces or are combined into one word. Reflecting this changing usage, in 2007, the sixth edition of the Shorter Oxford English Dictionary removed the hyphens from 16,000 entries, such as fig-leaf (now fig leaf), pot-belly (now pot belly), and pigeon-hole (now pigeonhole). The increasing prevalence of computer technology and the advent of the Internet have given rise to a subset of common nouns that might have been hyphenated in the past (e.g., toolbar, hyperlink, and pastebin).
-
-Despite decreased use, hyphenation remains the norm in certain compound-modifier constructions and, among some authors, with certain prefixes (see below). Hyphenation is also routinely used as part of syllabification in justified texts to avoid unsightly spacing (especially in columns with narrow line lengths, as when used with newspapers).
-
-When flowing text, it is sometimes preferable to break a word into two so that it continues on another line rather than moving the entire word to the next line. The word may be divided at the nearest break point between syllables (syllabification) and a hyphen inserted to indicate that the letters form a word fragment, rather than a full word. This allows more efficient use of paper, allows flush appearance of right-side margins (justification) without oddly large word spaces, and decreases the problem of rivers. This kind of hyphenation is most useful when the width of the column (called the "line length" in typography) is very narrow."""
-//endregion
 
 class ComboBreakerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,6 +81,56 @@ class ComboBreakerActivity : ComponentActivity() {
 
     @Composable
     private fun TextFlowDemo() {
+        val colorScheme = MaterialTheme.colorScheme
+
+        //region Sample text
+        val sampleText = remember {
+            buildAnnotatedString {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp)) {
+                    append("he Hyphen\n\n")
+                }
+                append("The ")
+                withStyle(style = SpanStyle(color = colorScheme.primary)) {
+                    append("English language ")
+                }
+                append("does not have definitive hyphenation rules, though various ")
+                withStyle(style = SpanStyle(color = colorScheme.primary)) {
+                    append("style guides ")
+                }
+                append("provide detailed usage recommendations and have a significant ")
+                append("amount of overlap in what they advise. Hyphens are mostly used to break single ")
+                append("words into parts or to join ordinarily separate words into single words. Spaces ")
+                append("are not placed between a hyphen and either of the elements it connects except ")
+                append("when using a suspended or ")
+                withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
+                    append("\"hanging\" ")
+                }
+                append("hyphen that stands in for a repeated word (e.g., nineteenth- and ")
+                append("twentieth-century writers). Style conventions that apply to hyphens (and ")
+                append("dashes) have evolved to support ease of reading in complex constructions; ")
+                append("editors often accept deviations if they aid rather than hinder easy ")
+                append("comprehension.\n\n")
+
+                append("The use of the hyphen in ")
+                withStyle(style = SpanStyle(color = colorScheme.primary)) {
+                    append("English compound ")
+                }
+                append("nouns and verbs has, in general, ")
+                append("been steadily declining. Compounds that might once have been hyphenated are ")
+                append("increasingly left with spaces or are combined into one word. Reflecting this ")
+                append("changing usage, in 2007, the sixth edition of the ")
+                withStyle(style = SpanStyle(fontStyle = FontStyle.Italic)) {
+                    append("Shorter Oxford English ")
+                }
+                append("Dictionary removed the hyphens from 16,000 entries, such as fig-leaf (now fig ")
+                append("leaf), pot-belly (now pot belly), and pigeon-hole (now pigeonhole). The ")
+                append("increasing prevalence of computer technology and the advent of the Internet ")
+                append("have given rise to a subset of common nouns that might have been hyphenated ")
+                append("in the past (e.g., toolbar, hyperlink, and pastebin).")
+            }
+        }
+        //endregion
+
         val microphone = remember {
             BitmapFactory.decodeResource(resources, R.drawable.microphone).let {
                 Bitmap.createScaledBitmap(it, it.width / 2, it.height / 2, true)
@@ -132,16 +175,11 @@ class ComboBreakerActivity : ComponentActivity() {
 
         Column(modifier = Modifier.padding(16.dp)) {
             TextFlow(
-                buildAnnotatedString {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append("Combo Breaker Demo\n\n")
-                    }
-                    append(SampleText)
-                },
+                sampleText,
                 modifier = Modifier
                     .weight(1.0f)
                     .fillMaxWidth(),
-                style = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
+                style = LocalTextStyle.current.copy(color = colorScheme.onSurface),
                 justification = justification,
                 hyphenation = hyphenation,
                 columns = columns,

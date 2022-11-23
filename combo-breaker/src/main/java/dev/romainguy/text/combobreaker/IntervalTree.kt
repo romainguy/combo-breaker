@@ -54,7 +54,7 @@ internal class IntervalTree<T> {
      * Clears this tree and prepares it for reuse. After calling [clear], any call to
      * [findOverlaps] returns false.
      */
-    internal fun clear() {
+    fun clear() {
         root = terminator
     }
 
@@ -62,7 +62,7 @@ internal class IntervalTree<T> {
      * Finds all the intervals that overlap with the specified [interval]. If [results]
      * is specified, [results] is returned, otherwise a new [MutableList] is returned.
      */
-    internal fun findOverlaps(
+    fun findOverlaps(
         interval: Interval<T>,
         results: MutableList<Interval<T>> = mutableListOf()
     ): MutableList<Interval<T>> {

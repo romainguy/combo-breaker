@@ -436,11 +436,28 @@ fun TextFlow(
             .drawBehind {
                 drawIntoCanvas {
                     val c = it.nativeCanvas
+
+                    var lastX = Float.NaN
+                    var lastY = Float.NaN
+                    var x = 0.0f
+
                     for (line in state.lines) {
                         line.paint.startHyphenEdit = line.startHyphen
                         line.paint.endHyphenEdit = line.endHyphen
                         line.paint.wordSpacing = line.justifyWidth
-                        c.drawText(line.text, line.start, line.end, line.x, line.y, line.paint)
+
+                        // TODO: We are taking the justified width into account here, but
+                        //       it would be better to do it inside layoutTextFlow()
+                        //       We can't simply use the state of the justification parameter
+                        //       since we sometimes shrink lines to fit them
+                        if (lastX != line.x || lastY != line.y) x = 0.0f
+
+                        c.drawText(line.text, line.start, line.end, line.x + x, line.y, line.paint)
+
+                        x += line.paint.measureText(line.text, line.start, line.end)
+
+                        lastX = line.x
+                        lastY = line.y
                     }
                 }
             }
