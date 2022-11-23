@@ -122,7 +122,6 @@ internal fun layoutTextFlow(
         size.height.toFloat()
     )
 
-    // TODO: Now that we support multiple text styles, we don't need to create that first paint.
     val state = TextLayoutState(
         text,
         style,
@@ -417,7 +416,8 @@ private class TextLayoutState(
     private val resolver: FontFamily.Resolver,
     private val density: Density
 ) {
-    val paint = createTextPaint(resolver, textStyle, density)
+    // TODO: Now that we support multiple text styles, we don't need to create that first paint.
+    val paint = paintForStyle(textStyle)
 
     private val paragraphs = text.split('\n')
 
