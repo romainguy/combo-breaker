@@ -16,8 +16,11 @@
 
 package dev.romainguy.text.combobreaker
 
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Build
 import android.text.TextPaint
+import androidx.compose.runtime.State
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Brush
@@ -29,6 +32,7 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontSynthesis
@@ -101,7 +105,7 @@ private fun TextPaint.setBrush(brush: Brush?, size: Size, alpha: Float = Float.N
 @OptIn(ExperimentalTextApi::class)
 fun TextPaint.applySpanStyle(
     style: SpanStyle,
-    resolveTypeface: (FontFamily?, FontWeight, FontStyle, FontSynthesis) -> android.graphics.Typeface,
+    resolveTypeface: (FontFamily?, FontWeight, FontStyle, FontSynthesis) -> Typeface,
     density: Density,
 ): SpanStyle {
     when (style.fontSize.type) {
@@ -205,3 +209,33 @@ private fun correctBlurRadius(blurRadius: Float) = if (blurRadius == 0f) {
 } else {
     blurRadius
 }
+
+private class TypefaceDirtyTracker(resolveResult: State<Any>) {
+    val initial = resolveResult.value
+    val typeface: Typeface
+        get() = initial as Typeface
+}
+
+internal fun createTextPaint(
+    fontFamilyResolver: FontFamily.Resolver,
+    style: TextStyle,
+    density: Density
+) = TextPaint().apply {
+    val resolvedTypefaces: MutableList<TypefaceDirtyTracker> = mutableListOf()
+    val resolveTypeface: (FontFamily?, FontWeight, FontStyle, FontSynthesis) -> Typeface =
+        { fontFamily, fontWeight, fontStyle, fontSynthesis ->
+            val result = fontFamilyResolver.resolve(
+                fontFamily,
+                fontWeight,
+                fontStyle,
+                fontSynthesis
+            )
+            val holder = TypefaceDirtyTracker(result)
+            resolvedTypefaces.add(holder)
+            holder.typeface
+        }
+    applySpanStyle(style.toSpanStyle(), resolveTypeface, density)
+    isAntiAlias = true
+}
+
+internal inline val Paint.lineHeight get() = fontMetrics.descent - fontMetrics.ascent

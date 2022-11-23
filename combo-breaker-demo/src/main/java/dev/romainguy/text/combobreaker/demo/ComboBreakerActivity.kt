@@ -87,9 +87,9 @@ class ComboBreakerActivity : ComponentActivity() {
         val sampleText = remember {
             buildAnnotatedString {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp)) {
-                    append("he Hyphen\n\n")
+                    append("he Hyphen")
                 }
-                append("The ")
+                append("\n\nThe ")
                 withStyle(style = SpanStyle(color = colorScheme.primary)) {
                     append("English language ")
                 }
@@ -150,7 +150,7 @@ class ComboBreakerActivity : ComponentActivity() {
 
         var columns by remember { mutableStateOf(2) }
         var useRectangleShapes by remember { mutableStateOf(true) }
-        var isJustified by remember { mutableStateOf(true) }
+        var isJustified by remember { mutableStateOf(false) }
         var isHyphenated by remember { mutableStateOf(true) }
         var isDebugOverlayEnabled by remember { mutableStateOf(true) }
 

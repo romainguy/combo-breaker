@@ -18,19 +18,14 @@ package dev.romainguy.text.combobreaker
 
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Typeface
 import android.graphics.text.LineBreaker
 import android.graphics.text.MeasuredText
 import android.os.Build
 import android.text.TextPaint
-import androidx.compose.runtime.State
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontSynthesis
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
@@ -129,10 +124,6 @@ internal fun layoutTextFlow(
         flowState.resolver,
         flowState.density
     )
-    // TODO: Our line height is wrong when looking up available slots, we need to use the
-    //       first available text style's paint and re-try if the layout yields a line that's
-    //       taller than we expected
-    val lineHeight = state.paint.fontMetrics.descent - state.paint.fontMetrics.ascent
 
     for (c in 0 until columnCount) {
         // Cursor to indicate where to draw the next line of text
@@ -141,17 +132,15 @@ internal fun layoutTextFlow(
         while (state.hasNextParagraph) {
             val paragraph = state.currentParagraph
 
+            val firstStyle = state.currentParagraphStyles()[0].data!!
+            val lineHeight = state.paintForStyle(firstStyle).lineHeight
+
             // Skip empty paragraphs but advance the cursor to mark empty lines
             if (paragraph.isEmpty()) {
                 y += lineHeight
                 state.nextParagraph()
                 continue
             }
-
-            var ascent = 0.0f
-            var descent = 0.0f
-
-            var first = true
 
             // We want to layout text until we've run out of characters in the current paragraph,
             // or we've run out of space in the layout area
@@ -168,9 +157,8 @@ internal fun layoutTextFlow(
                     flowState.shapes
                 )
 
-                // Position our cursor to the baseline of the next line, the first time this is
-                // a no-op since ascent is set to 0. We'll fix this below
-                y += ascent
+                var ascent = 0.0f
+                var descent = 0.0f
 
                 // Remember our number of "lines" to check later if we added new ones
                 val lineCount = flowState.lines.size
@@ -218,17 +206,13 @@ internal fun layoutTextFlow(
                     val lineWidth = result.getLineWidth(state.lastParagraphLine)
 
                     // Tells us how far to move the cursor for the next line of text
-                    ascent = -result.getLineAscent(state.lastParagraphLine)
-                    descent = result.getLineDescent(state.lastParagraphLine)
-
-                    // Correct ascent for the first line in the paragraph
-                    if (first) {
-                        y += ascent
-                        first = false
-                    }
+                    val lineAscent = -result.getLineAscent(state.lastParagraphLine)
+                    val lineDescent = result.getLineDescent(state.lastParagraphLine)
 
                     // Don't enqueue a new line if we'd lay it out out of bounds
-                    if (y  > column.height() || (y + descent) > column.height()) break
+                    if (y  > column.height() || (y + lineAscent + lineDescent) > column.height()) {
+                        break
+                    }
 
                     // Start and end offset of the line relative to the paragraph itself
                     val startOffset = state.paragraphOffset + state.lastLineOffset
@@ -282,7 +266,7 @@ internal fun layoutTextFlow(
                                 localEndHyphen,
                                 justifyWidth,
                                 x,
-                                y,
+                                y + lineAscent,
                                 paint
                             )
                         )
@@ -307,6 +291,9 @@ internal fun layoutTextFlow(
                         }
                     }
 
+                    ascent = max(ascent, lineAscent)
+                    descent = max(descent, lineDescent)
+
                     state.textHeight = max(state.textHeight, y + descent)
 
                     state.breakOffset = state.paragraphOffset + lineOffset
@@ -323,7 +310,7 @@ internal fun layoutTextFlow(
                 y += if (lineCount == flowState.lines.size && ascent == 0.0f && descent == 0.0f) {
                     lineHeight
                 } else {
-                    descent
+                    descent + ascent
                 }
             }
 
@@ -345,6 +332,7 @@ internal fun layoutTextFlow(
 private fun MeasuredText.Builder.appendStyleRuns(
     state: TextLayoutState
 ): MeasuredText.Builder {
+
     state.currentParagraphStyles().forEach { interval ->
         if (interval.end > state.paragraphOffset) {
             val start = max(0, (interval.start - state.paragraphOffset).toInt())
@@ -480,14 +468,13 @@ private class TextLayoutState(
     }
 
     val mergedStyles = ArrayList<Interval<TextStyle>>(16)
+    var mergedStylesParagraph = -1
 
     val paints = mutableMapOf<TextStyle, TextPaint>()
-    // TODO: Now that we support multiple text styles, we don't need to create that first paint.
-    val paint = paintForStyle(textStyle)
 
     // Used to measure and break text, initialized here to avoid null checks
     var measuredText = MeasuredText.Builder(CharArray(1))
-        .appendStyleRun(paint, 1, false)
+        .appendStyleRun(Paint(), 1, false)
         .build()
     var result: LineBreaker.Result? = null
 
@@ -511,10 +498,15 @@ private class TextLayoutState(
     }
 
     fun currentParagraphStyles(): ArrayList<Interval<TextStyle>> {
-        if (paragraphOffset > 0) return mergedStyles
+        if (mergedStylesParagraph == _currentParagraph) {
+            return mergedStyles
+        } else {
+            mergedStylesParagraph = _currentParagraph
+        }
 
         val paragraph = currentParagraph
         val offset = currentParagraphStartOffset
+        val fullParagraph = paragraph.isNotEmpty()
 
         val searchInternal = Interval<SpanStyle>(
             offset.toFloat(),
@@ -532,12 +524,12 @@ private class TextLayoutState(
             val start = max(style.start - offset, 0.0f)
             val end = min(style.end - offset, paragraph.length.toFloat())
 
-            if (start == end) continue
+            if (start == end && fullParagraph) continue
 
             for (i in 0 until mergedStyles.size) {
                 val merged = mergedStyles[i]
 
-                if (merged.start == merged.end) continue
+                if (merged.start == merged.end && fullParagraph) continue
 
                 val styleData = style.data!!
                 val mergedData = merged.data!!
@@ -625,32 +617,4 @@ private fun MeasuredText.Builder.hyphenation(
         MeasuredTextHelper.hyphenation(this, hyphenation)
     }
     return this
-}
-
-private class TypefaceDirtyTracker(resolveResult: State<Any>) {
-    val initial = resolveResult.value
-    val typeface: Typeface
-        get() = initial as Typeface
-}
-
-internal fun createTextPaint(
-    fontFamilyResolver: FontFamily.Resolver,
-    style: TextStyle,
-    density: Density
-) = TextPaint().apply {
-    val resolvedTypefaces: MutableList<TypefaceDirtyTracker> = mutableListOf()
-    val resolveTypeface: (FontFamily?, FontWeight, FontStyle, FontSynthesis) -> Typeface =
-        { fontFamily, fontWeight, fontStyle, fontSynthesis ->
-            val result = fontFamilyResolver.resolve(
-                fontFamily,
-                fontWeight,
-                fontStyle,
-                fontSynthesis
-            )
-            val holder = TypefaceDirtyTracker(result)
-            resolvedTypefaces.add(holder)
-            holder.typeface
-        }
-    applySpanStyle(style.toSpanStyle(), resolveTypeface, density)
-    isAntiAlias = true
 }
