@@ -16,6 +16,7 @@
 
 package dev.romainguy.text.combobreaker
 
+import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.text.LineBreaker
@@ -260,13 +261,25 @@ internal fun layoutTextFlow(
 
                         val paint = state.paintForStyle(lineStyle)
 
+                        val localStartHyphen = if (start == startOffset) {
+                            startHyphen
+                        } else {
+                            Paint.START_HYPHEN_EDIT_NO_EDIT
+                        }
+
+                        val localEndHyphen = if (end == endOffset) {
+                            endHyphen
+                        } else {
+                            Paint.START_HYPHEN_EDIT_NO_EDIT
+                        }
+
                         flowState.lines.add(
                             TextLine(
                                 paragraph,
                                 start,
                                 end,
-                                if (start == startOffset) startHyphen else 0,
-                                if (end == endOffset) endHyphen else 0,
+                                localStartHyphen,
+                                localEndHyphen,
                                 justifyWidth,
                                 x,
                                 y,
@@ -280,8 +293,8 @@ internal fun layoutTextFlow(
                         if (cursor < endOffset) {
                             if (justifyWidth != 0.0f) {
                                 with(paint) {
-                                    startHyphenEdit = startHyphen
-                                    endHyphenEdit = endHyphen
+                                    startHyphenEdit = localStartHyphen
+                                    endHyphenEdit = localEndHyphen
                                     wordSpacing = justifyWidth
                                 }
                                 x += paint.measureText(paragraph, start, end)

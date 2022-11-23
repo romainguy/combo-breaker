@@ -188,8 +188,8 @@ data class TextFlowLayoutResult(val height: Float, val lastOffset: Int)
  * of the children layouts, use the [TextFlowScope.align] modifier.
  *
  * Text justification can be controlled with the [justification] parameter, but it is strongly
- * recommended to leave it on to provide balanced flow around shapes with a flow type set to
- * [FlowType.Outside].
+ * recommended to leave it on to provide balanced flow around non-rectangular shapes with a flow
+ * type set to [FlowType.Outside].
  *
  * Text hyphenation can be controlled with the [hyphenation] parameter, but will only work on
  * API level that support hyphenation control (API 33+). It is also recommended to keep hyphenation
@@ -224,7 +224,7 @@ fun TextFlow(
     text: String,
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
-    justification: TextFlowJustification = TextFlowJustification.Auto,
+    justification: TextFlowJustification = TextFlowJustification.None,
     hyphenation: TextFlowHyphenation = TextFlowHyphenation.Auto,
     columns: Int = 1,
     columnSpacing: Dp = 16.dp,
@@ -273,8 +273,8 @@ fun TextFlow(
  * of the children layouts, use the [TextFlowScope.align] modifier.
  *
  * Text justification can be controlled with the [justification] parameter, but it is strongly
- * recommended to leave it on to provide balanced flow around shapes with a flow type set to
- * [FlowType.Outside].
+ * recommended to leave it on to provide balanced flow around non-rectangular shapes with a flow
+ * type set to [FlowType.Outside].
  *
  * Text hyphenation can be controlled with the [hyphenation] parameter, but will only work on
  * API level that support hyphenation control (API 33+). It is also recommended to keep hyphenation
@@ -309,7 +309,7 @@ fun TextFlow(
     text: AnnotatedString,
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
-    justification: TextFlowJustification = TextFlowJustification.Auto,
+    justification: TextFlowJustification = TextFlowJustification.None,
     hyphenation: TextFlowHyphenation = TextFlowHyphenation.Auto,
     columns: Int = 1,
     columnSpacing: Dp = 16.dp,

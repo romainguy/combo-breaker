@@ -207,7 +207,7 @@ class ComboBreakerActivity : ComponentActivity() {
                         .align(Alignment.Center)
                         .flowShape(
                             FlowType.Outside,
-                            if (useRectangleShapes) 6.dp else 10.dp,
+                            if (useRectangleShapes) 8.dp else 10.dp,
                             if (useRectangleShapes) null else badgeShape
                         )
                 )
