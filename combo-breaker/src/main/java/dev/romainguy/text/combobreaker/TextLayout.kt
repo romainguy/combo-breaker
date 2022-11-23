@@ -274,22 +274,24 @@ internal fun layoutTextFlow(
                             )
                         )
 
-                        if (justifyWidth != 0.0f) {
-                            with(paint) {
-                                startHyphenEdit = startHyphen
-                                endHyphenEdit = endHyphen
-                                wordSpacing = justifyWidth
-                            }
-                            x += paint.measureText(paragraph, start, end)
-                        } else {
-                            x += state.measuredText.getWidth(
-                                start - state.paragraphOffset,
-                                end - state.paragraphOffset
-                            )
-                        }
-
                         cursor = end
                         styleIndex++
+
+                        if (cursor < endOffset) {
+                            if (justifyWidth != 0.0f) {
+                                with(paint) {
+                                    startHyphenEdit = startHyphen
+                                    endHyphenEdit = endHyphen
+                                    wordSpacing = justifyWidth
+                                }
+                                x += paint.measureText(paragraph, start, end)
+                            } else {
+                                x += state.measuredText.getWidth(
+                                    start - state.paragraphOffset,
+                                    end - state.paragraphOffset
+                                )
+                            }
+                        }
                     }
 
                     state.textHeight = max(state.textHeight, y + descent)
