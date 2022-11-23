@@ -321,6 +321,7 @@ internal fun layoutTextFlow(
             if (y >= column.height()) break
         }
 
+        // Move to the next column
         column.offset((column.width() + columnSpacing) * if (ltr) 1.0f else -1.0f, 0.0f)
     }
 
