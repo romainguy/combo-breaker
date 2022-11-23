@@ -122,14 +122,16 @@ internal fun layoutTextFlow(
         size.height.toFloat()
     )
 
+    // TODO: Now that we support multiple text styles, we don't need to create that first paint.
     val state = TextLayoutState(
         text,
         style,
         flowState.resolver,
         flowState.density
     )
-    // TODO: Rethink those two things once we have support for span styles. We probably still
-    //       need support for a default line height anyway.
+    // TODO: Our line height is wrong when looking up available slots, we need to use the
+    //       first available text style's paint and re-try if the layout yields a line that's
+    //       taller than we expected
     val lineHeight = state.paint.fontMetrics.descent - state.paint.fontMetrics.ascent
 
     for (c in 0 until columnCount) {
