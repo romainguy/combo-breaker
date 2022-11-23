@@ -464,6 +464,12 @@ private class TextLayoutState(
     var textHeight = 0.0f
     var totalOffset = 0
 
+    val styleIntervals = IntervalTree<SpanStyle>().apply {
+        text.spanStyles.forEach {
+            this += Interval(it.start.toFloat(), it.end.toFloat(), it.item)
+        }
+    }
+
     val mergedStyles = ArrayList<Interval<TextStyle>>(16)
 
     val paints = mutableMapOf<TextStyle, TextPaint>()
@@ -488,11 +494,6 @@ private class TextLayoutState(
 
         val paragraph = currentParagraph
         val offset = currentParagraphStartOffset
-
-        val styleIntervals = IntervalTree<SpanStyle>()
-        text.spanStyles.forEach {
-            styleIntervals += Interval(it.start.toFloat(), it.end.toFloat(), it.item)
-        }
 
         val searchInternal = Interval<SpanStyle>(
             offset.toFloat(),
