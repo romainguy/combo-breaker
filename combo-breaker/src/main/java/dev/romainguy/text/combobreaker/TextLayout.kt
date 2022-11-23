@@ -416,9 +416,6 @@ private class TextLayoutState(
     private val resolver: FontFamily.Resolver,
     private val density: Density
 ) {
-    // TODO: Now that we support multiple text styles, we don't need to create that first paint.
-    val paint = paintForStyle(textStyle)
-
     private val paragraphs = text.split('\n')
 
     private var _paragraphStartOffsets = paragraphs.scan(0) { accumulator, element ->
@@ -461,16 +458,6 @@ private class TextLayoutState(
     // Last line we laid out with the current measure of the current paragraph.
     var lastParagraphLine = 0
 
-    // Used to measure and break text, initialized here to avoid null checks
-    var measuredText = MeasuredText.Builder(CharArray(1))
-        .appendStyleRun(paint, 1, false)
-        .build()
-    var result: LineBreaker.Result? = null
-
-    // For TextFlowLayoutResult
-    var textHeight = 0.0f
-    var totalOffset = 0
-
     val styleIntervals = IntervalTree<SpanStyle>().apply {
         text.spanStyles.forEach {
             this += Interval(it.start.toFloat(), it.end.toFloat(), it.item)
@@ -480,6 +467,18 @@ private class TextLayoutState(
     val mergedStyles = ArrayList<Interval<TextStyle>>(16)
 
     val paints = mutableMapOf<TextStyle, TextPaint>()
+    // TODO: Now that we support multiple text styles, we don't need to create that first paint.
+    val paint = paintForStyle(textStyle)
+
+    // Used to measure and break text, initialized here to avoid null checks
+    var measuredText = MeasuredText.Builder(CharArray(1))
+        .appendStyleRun(paint, 1, false)
+        .build()
+    var result: LineBreaker.Result? = null
+
+    // For TextFlowLayoutResult
+    var textHeight = 0.0f
+    var totalOffset = 0
 
     private val styleComparator =
         Comparator { style1: Interval<SpanStyle>, style2: Interval<SpanStyle> ->
