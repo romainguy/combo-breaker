@@ -110,6 +110,8 @@ dependencies {
 - BiDi text hasn't been tested yet, and probably doesn't work properly (RTL layouts are however
   supported for the placement of flow shapes and the handling of columns).
 - Improve performance of contours extraction from an image (could be multi-threaded for instance).
+- Investigate an alternative and simpler way to handle placement around shapes (beam cast instead 
+  of the purely geometric approach that currently requires a lot of intersection work).
 - Support flowing text inside shapes.
 
 ## License
