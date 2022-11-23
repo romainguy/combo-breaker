@@ -102,8 +102,6 @@ dependencies {
 - More comprehensive `TextFlowLayoutResult`.
 - Paths with multiple contours are treated as a single shape. A future feature will allow such
   paths to be treated as multiple shapes.
-- Only one `TextStyle` is supported. Support for multiple text styles (at least one per paragraph)
-  is planned.
 - Add support to ellipsize the last line when the entire text cannot fit in the layout area.
 - Add support for text-relative placement of flow shapes.
 - Implement margins support without relying on `Path.op` which can be excessively expensive with
