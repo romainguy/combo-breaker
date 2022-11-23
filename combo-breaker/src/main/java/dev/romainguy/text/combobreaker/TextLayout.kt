@@ -167,9 +167,7 @@ internal fun layoutTextFlow(
                 // of slots we just computed
                 for (slot in slots) {
                     // Sets the constraints width to that of our current slot
-                    val x1 = slot.left
-                    val x2 = slot.right
-                    constraints.width = x2 - x1
+                    constraints.width = slot.right - slot.left
 
                     // Skip empty slots
                     if (constraints.width <= 0) continue
@@ -236,7 +234,7 @@ internal fun layoutTextFlow(
                     var cursor = startOffset
                     var styleIndex = state.mergedStyles.indexOfFirst { cursor < it.end }
 
-                    var x = x1
+                    var x = slot.left
                     while (cursor < endOffset) {
                         val interval = state.mergedStyles[styleIndex]
                         val start = max(startOffset, interval.start.toInt())
@@ -329,6 +327,10 @@ internal fun layoutTextFlow(
     return TextFlowLayoutResult(state.textHeight, state.totalOffset + state.breakOffset)
 }
 
+/**
+ * Append style runs to this [MeasuredText.Builder]. The style runs are provided by the
+ * [TextLayoutState] when invoking [TextLayoutState.currentParagraphStyles].
+ */
 private fun MeasuredText.Builder.appendStyleRuns(
     state: TextLayoutState
 ): MeasuredText.Builder {
@@ -419,22 +421,30 @@ private class TextLayoutState(
     private val resolver: FontFamily.Resolver,
     private val density: Density
 ) {
+    // List of all the paragraphs in our original text
     private val paragraphs = text.split('\n')
 
+    // Summed list of offsets: each entry corresponds to the starting offset of the corresponding
+    // paragraph in the original text
     private var _paragraphStartOffsets = paragraphs.scan(0) { accumulator, element ->
         accumulator + element.length + 1
     }
 
+    // Start offset in the original text of the current paragraph
     private inline val currentParagraphStartOffset: Int
         get() = _paragraphStartOffsets[_currentParagraph]
 
+    // Index of the current paragraph in our list of paragraphs
     private var _currentParagraph = 0
+    // Current paragraph as a String
     inline val currentParagraph: String
         get() = paragraphs[_currentParagraph]
 
+    // Returns true if we have more paragraphs to process, false otherwise
     inline val hasNextParagraph: Boolean
         get() = _currentParagraph < paragraphs.size
 
+    // Returns true if we can still find break points inside the current paragraph
     inline val isInsideParagraph: Boolean
         get() = breakOffset < currentParagraph.length
 
@@ -461,15 +471,20 @@ private class TextLayoutState(
     // Last line we laid out with the current measure of the current paragraph.
     var lastParagraphLine = 0
 
+    // Interval tree of all the styles found in the source annotated string
+    // This tree allows us to quickly lookup the styles for a given paragraph
     val styleIntervals = IntervalTree<SpanStyle>().apply {
         text.spanStyles.forEach {
             this += Interval(it.start.toFloat(), it.end.toFloat(), it.item)
         }
     }
 
+    // List of merged styles for the current paragraph. Styles can overlap in the source
+    // annotated string. To make lookups easier, we merge the styles ahead of time when
+    // consuming a new paragraph
     val mergedStyles = ArrayList<Interval<TextStyle>>(16)
-    var mergedStylesParagraph = -1
 
+    // Cache of paints used to measurement and drawing
     val paints = mutableMapOf<TextStyle, TextPaint>()
 
     // Used to measure and break text, initialized here to avoid null checks
@@ -482,6 +497,9 @@ private class TextLayoutState(
     var textHeight = 0.0f
     var totalOffset = 0
 
+    // Comparator used to sort the results of an interval query against the styleIntervals
+    // tree. The tree doesn't preserve ordering and this comparator puts the intervals/ranges
+    // back in the order provided by AnnotatedString
     private val styleComparator =
         Comparator { style1: Interval<SpanStyle>, style2: Interval<SpanStyle> ->
             val start = (style1.start - style2.start).toInt()
@@ -490,18 +508,23 @@ private class TextLayoutState(
             else 1
         }
 
+    // Moves the internal state to the next paragraph in the list
     fun nextParagraph() {
         _currentParagraph++
+        mergedStyles.clear()
         totalOffset += breakOffset + 1
         breakOffset = 0
         lastSlotWidth = Float.NaN
     }
 
+    // Returns the list of ranged styles for the current paragraph. Invoking this function
+    // after calling nextParagraph() triggers a complete computation of all the merged
+    // styles for the paragraph
     fun currentParagraphStyles(): ArrayList<Interval<TextStyle>> {
-        if (mergedStylesParagraph == _currentParagraph) {
+        // The code below guarantees that the list of merged styles always contains at least
+        // 1 style. When the list is empty it means we haven't built it yet
+        if (mergedStyles.isNotEmpty()) {
             return mergedStyles
-        } else {
-            mergedStylesParagraph = _currentParagraph
         }
 
         val paragraph = currentParagraph
@@ -515,9 +538,13 @@ private class TextLayoutState(
 
         val styles = styleIntervals.findOverlaps(searchInternal).sortedWith(styleComparator)
 
-        mergedStyles.clear()
         mergedStyles.add(Interval(0.0f, paragraph.length.toFloat(), textStyle))
 
+        // This loop takes all the "spans" (ranged styles) from the annotated string and merges
+        // and splits them so we are left with a continuous list of styled ranges. The resulting
+        // list gives the exact style for all the offsets in a given annotated string (at least
+        // for our current paragraph). This allows to trivially fetch the style at any given
+        // index or range.
         val styleCount = styles.size
         for (j in 0 until styleCount) {
             val style = styles[j]
@@ -569,6 +596,7 @@ private class TextLayoutState(
         return mergedStyles
     }
 
+    // Returns a paint for the specified style. The paint is cached as needed
     fun paintForStyle(style: TextStyle) = paints.computeIfAbsent(style) {
         createTextPaint(resolver, style, density)
     }
