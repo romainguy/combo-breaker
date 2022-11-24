@@ -7,6 +7,13 @@ Composable widget for Jetpack Compose that allows to flow text around arbitrary 
 multiple columns. The `TextFlow` composable behaves as a `Box` layout and will automatically
 flow the text content around its children.
 
+* [Features](#features)
+* [Examples](#examples)
+* [Maven](#maven)
+* [Roadmap](#roadmap)
+* [License](#license)
+* [Attribution](#attribution)
+
 ## Features
 
 - Multi-column layout
@@ -109,7 +116,7 @@ dependencies {
 }
 ```
 
-## Limitations and planned work
+## Roadmap
 
 - Backport to earlier API levels.
 - Optimizations!
