@@ -112,12 +112,13 @@ repositories {
 }
 
 dependencies {
-    implementation 'dev.romainguy:combo-breaker:0.2.0'
+    implementation 'dev.romainguy:combo-breaker:0.3.0'
 }
 ```
 
 ## Roadmap
 
+- Properly support paragraphs with styles of different line heights.
 - Backport to earlier API levels.
 - Optimizations!
 - More comprehensive `TextFlowLayoutResult`.
