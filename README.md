@@ -8,6 +8,7 @@ multiple columns. The `TextFlow` composable behaves as a `Box` layout and will a
 flow the text content around its children.
 
 * [Features](#features)
+* [Design Systems](#design-systems)
 * [Examples](#examples)
 * [Maven](#maven)
 * [Roadmap](#roadmap)
@@ -24,6 +25,16 @@ flow the text content around its children.
 - Hyphenation
 - Generate shapes from images
 - Compatible with API 29+
+
+## Design Systems
+
+Combo Breaker provides two levels of APIs depending on what design system you use:
+
+- `BasicTextFlow` from the `dev.romainguy:combo-breaker` artifact, which works with any design system
+- `TextFlow` from the `dev.romainguy:combo-breaker-material3` artifact, which works with Material3
+
+Choose `BasicTextFlow` if you do not have or do not want a dependency on
+`androidx.compose.material3:material3`.
 
 ## Examples
 
