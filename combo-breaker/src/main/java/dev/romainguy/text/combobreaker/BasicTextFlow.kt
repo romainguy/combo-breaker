@@ -20,7 +20,6 @@ import android.graphics.Paint
 import android.graphics.RectF
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.LayoutScopeMarker
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
@@ -140,7 +139,7 @@ enum class FlowType(private val bits: Int) {
 }
 
 /**
- * Controls the behavior of text justification in a [TextFlow].
+ * Controls the behavior of text justification in a [BasicTextFlow].
  */
 enum class TextFlowJustification {
     /** Turns off text justification. */
@@ -150,7 +149,7 @@ enum class TextFlowJustification {
 }
 
 /**
- * Controls the behavior of text hyphenation in a [TextFlow]. Hyphenation will only work on
+ * Controls the behavior of text hyphenation in a [BasicTextFlow]. Hyphenation will only work on
  * API level 33 and above.
  */
 enum class TextFlowHyphenation {
@@ -182,10 +181,10 @@ data class TextFlowLayoutResult(val height: Float, val lastOffset: Int)
  * The default flow shape of each element is a rectangle of the same dimensions as the element
  * itself, with a flow type set to [FlowType.Outside].
  *
- * The [TextFlow] will size itself to fit the [content], subject to the incoming constraints.
+ * The [BasicTextFlow] will size itself to fit the [content], subject to the incoming constraints.
  * When children are smaller than the parent, by default they will be positioned inside
- * the [TextFlow] according to the [contentAlignment]. For individually specifying the alignments
- * of the children layouts, use the [TextFlowScope.align] modifier.
+ * the [BasicTextFlow] according to the [contentAlignment]. For individually specifying the
+ * alignments of the children layouts, use the [TextFlowScope.align] modifier.
  *
  * Text justification can be controlled with the [justification] parameter, but it is strongly
  * recommended to leave it on to provide balanced flow around non-rectangular shapes with a flow
@@ -195,12 +194,12 @@ data class TextFlowLayoutResult(val height: Float, val lastOffset: Int)
  * API level that support hyphenation control (API 33+). It is also recommended to keep hyphenation
  * turned on to provide more balanced results.
  *
- * By default, the content will be measured without the [TextFlow]'s incoming min constraints,
+ * By default, the content will be measured without the [BasicTextFlow]'s incoming min constraints,
  * unless [propagateMinConstraints] is `true`. As an example, setting [propagateMinConstraints] to
- * `true` can be useful when the [TextFlow] has content on which modifiers cannot be specified
- * directly and setting a min size on the content of the [TextFlow] is needed. If
- * [propagateMinConstraints] is set to `true`, the min size set on the [TextFlow] will also be
- * applied to the content, whereas otherwise the min size will only apply to the [TextFlow].
+ * `true` can be useful when the [BasicTextFlow] has content on which modifiers cannot be specified
+ * directly and setting a min size on the content of the [BasicTextFlow] is needed. If
+ * [propagateMinConstraints] is set to `true`, the min size set on the [BasicTextFlow] will also be
+ * applied to the content, whereas otherwise the min size will only apply to the [BasicTextFlow].
  *
  * When the content has more than one layout child the layout children will be stacked one
  * on top of the other (positioned as explained above) in the composition order.
@@ -216,14 +215,14 @@ data class TextFlowLayoutResult(val height: Float, val lastOffset: Int)
  * @param contentAlignment The default alignment inside the layout.
  * @param propagateMinConstraints Whether the incoming min constraints should be passed to content.
  * @param debugOverlay Used for debugging only.
- * @param content The content of the [TextFlow]. Each element in the content defines a flow shape
- * that is taken into account to layout [text].
+ * @param content The content of the [BasicTextFlow]. Each element in the content defines a flow
+ * shape that is taken into account to layout [text].
  */
 @Composable
-fun TextFlow(
+fun BasicTextFlow(
     text: String,
+    style: TextStyle,
     modifier: Modifier = Modifier,
-    style: TextStyle = LocalTextStyle.current,
     justification: TextFlowJustification = TextFlowJustification.None,
     hyphenation: TextFlowHyphenation = TextFlowHyphenation.Auto,
     columns: Int = 1,
@@ -238,10 +237,10 @@ fun TextFlow(
         derivedStateOf { AnnotatedString(text, style.toSpanStyle()) }
     }
 
-    TextFlow(
+    BasicTextFlow(
         annotatedText,
-        modifier,
         style,
+        modifier,
         justification,
         hyphenation,
         columns,
@@ -267,10 +266,10 @@ fun TextFlow(
  * The default flow shape of each element is a rectangle of the same dimensions as the element
  * itself, with a flow type set to [FlowType.Outside].
  *
- * The [TextFlow] will size itself to fit the [content], subject to the incoming constraints.
+ * The [BasicTextFlow] will size itself to fit the [content], subject to the incoming constraints.
  * When children are smaller than the parent, by default they will be positioned inside
- * the [TextFlow] according to the [contentAlignment]. For individually specifying the alignments
- * of the children layouts, use the [TextFlowScope.align] modifier.
+ * the [BasicTextFlow] according to the [contentAlignment]. For individually specifying the
+ * alignments of the children layouts, use the [TextFlowScope.align] modifier.
  *
  * Text justification can be controlled with the [justification] parameter, but it is strongly
  * recommended to leave it on to provide balanced flow around non-rectangular shapes with a flow
@@ -280,12 +279,12 @@ fun TextFlow(
  * API level that support hyphenation control (API 33+). It is also recommended to keep hyphenation
  * turned on to provide more balanced results.
  *
- * By default, the content will be measured without the [TextFlow]'s incoming min constraints,
+ * By default, the content will be measured without the [BasicTextFlow]'s incoming min constraints,
  * unless [propagateMinConstraints] is `true`. As an example, setting [propagateMinConstraints] to
- * `true` can be useful when the [TextFlow] has content on which modifiers cannot be specified
- * directly and setting a min size on the content of the [TextFlow] is needed. If
- * [propagateMinConstraints] is set to `true`, the min size set on the [TextFlow] will also be
- * applied to the content, whereas otherwise the min size will only apply to the [TextFlow].
+ * `true` can be useful when the [BasicTextFlow] has content on which modifiers cannot be specified
+ * directly and setting a min size on the content of the [BasicTextFlow] is needed. If
+ * [propagateMinConstraints] is set to `true`, the min size set on the [BasicTextFlow] will also be
+ * applied to the content, whereas otherwise the min size will only apply to the [BasicTextFlow].
  *
  * When the content has more than one layout child the layout children will be stacked one
  * on top of the other (positioned as explained above) in the composition order.
@@ -301,14 +300,14 @@ fun TextFlow(
  * @param contentAlignment The default alignment inside the layout.
  * @param propagateMinConstraints Whether the incoming min constraints should be passed to content.
  * @param debugOverlay Used for debugging only.
- * @param content The content of the [TextFlow]. Each element in the content defines a flow shape
- * that is taken into account to layout [text].
+ * @param content The content of the [BasicTextFlow]. Each element in the content defines a flow
+ * shape that is taken into account to layout [text].
  */
 @Composable
-fun TextFlow(
+fun BasicTextFlow(
     text: AnnotatedString,
+    style: TextStyle,
     modifier: Modifier = Modifier,
-    style: TextStyle = LocalTextStyle.current,
     justification: TextFlowJustification = TextFlowJustification.None,
     hyphenation: TextFlowHyphenation = TextFlowHyphenation.Auto,
     columns: Int = 1,
@@ -640,30 +639,31 @@ private fun ContentDrawScope.drawDebugInfo(
  * Lambda type used by [TextFlowScope.flowShape] to compute a flow shape defined as a [Path].
  * The two parameters are:
  * - `size` The size of the element the flowShape modifier is applied to.
- * - `textFlowSize` The size of the parent [TextFlow] container.
+ * - `textFlowSize` The size of the parent [BasicTextFlow] container.
  */
 typealias FlowShapeProvider = (size: IntSize, textFlowSize: IntSize) -> Path?
 
 /**
- * A [TextFlowScope] provides a scope for the children of [TextFlow].
+ * A [TextFlowScope] provides a scope for the children of [BasicTextFlow].
  */
 @LayoutScopeMarker
 @Immutable
 interface TextFlowScope {
     /**
-     * Pull the content element to a specific [Alignment] within the [TextFlow]. This alignment will
-     * have priority over the [TextFlow]'s `alignment` parameter.
+     * Pull the content element to a specific [Alignment] within the [BasicTextFlow]. This
+     * alignment will have priority over the [BasicTextFlow]'s `alignment` parameter.
      */
     @Stable
     fun Modifier.align(alignment: Alignment): Modifier
 
     /**
-     * Size the element to match the size of the [TextFlow] after all other content elements have
-     * been measured.
+     * Size the element to match the size of the [BasicTextFlow] after all other content
+     * elements have been measured.
      *
-     * The element using this modifier does not take part in defining the size of the [TextFlow].
-     * Instead, it matches the size of the [TextFlow] after all other children (not using
-     * matchParentSize() modifier) have been measured to obtain the [TextFlow]'s size.
+     * The element using this modifier does not take part in defining the size of the
+     * [BasicTextFlow]. Instead, it matches the size of the [BasicTextFlow] after all other
+     * children (not using `matchParentSize()` modifier) have been measured to obtain the
+     * [BasicTextFlow]'s size.
      */
     @Stable
     fun Modifier.matchParentSize(): Modifier
@@ -686,7 +686,7 @@ interface TextFlowScope {
     /**
      * Sets the shape used to flow text around this element. This variant of the [flowShape]
      * modifier accepts a lambda to define the shape used to flow text. That lambda receives
-     * as parameters the size of this element and the size of the parent [TextFlow] to
+     * as parameters the size of this element and the size of the parent [BasicTextFlow] to
      * facilitate the computation of an appropriate [Path].
      *
      * @param flowType Defines how text flows around this element, see [FlowType].

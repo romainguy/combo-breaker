@@ -61,5 +61,5 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
     implementation 'androidx.activity:activity-compose:1.6.1'
 
-    implementation project(path: ':combo-breaker')
+    implementation project(path: ':combo-breaker-material3')
 }

@@ -62,10 +62,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import androidx.compose.ui.unit.sp
 import dev.romainguy.text.combobreaker.FlowType
-import dev.romainguy.text.combobreaker.TextFlow
 import dev.romainguy.text.combobreaker.TextFlowHyphenation
 import dev.romainguy.text.combobreaker.TextFlowJustification
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
+import dev.romainguy.text.combobreaker.material3.TextFlow
 import dev.romainguy.text.combobreaker.toContour
 
 class ComboBreakerActivity : ComponentActivity() {

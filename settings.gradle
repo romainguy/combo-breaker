@@ -16,4 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Combo Breaker"
 include ':combo-breaker'
+include ':combo-breaker-material3'
 include ':combo-breaker-demo'

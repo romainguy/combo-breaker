@@ -112,7 +112,11 @@ repositories {
 }
 
 dependencies {
-    implementation 'dev.romainguy:combo-breaker:0.3.0'
+    // Use this library and BasicTextFlow() if you don't want a dependency on material3
+    implementation 'dev.romainguy:combo-breaker:0.4.0'
+
+    // Use this library and TextFlow() if you use material3
+    implementation 'dev.romainguy:combo-breaker-material3:0.4.0'
 }
 ```
 
