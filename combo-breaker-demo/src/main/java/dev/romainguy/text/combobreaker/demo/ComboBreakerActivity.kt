@@ -89,7 +89,8 @@ class ComboBreakerActivity : ComponentActivity() {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp)) {
                     append("he Hyphen")
                 }
-                append("\n\nThe ")
+                append("\n\n")
+                append("The ")
                 withStyle(style = SpanStyle(color = colorScheme.primary)) {
                     append("English language ")
                 }
@@ -126,7 +127,13 @@ class ComboBreakerActivity : ComponentActivity() {
                 append("leaf), pot-belly (now pot belly), and pigeon-hole (now pigeonhole). The ")
                 append("increasing prevalence of computer technology and the advent of the Internet ")
                 append("have given rise to a subset of common nouns that might have been hyphenated ")
-                append("in the past (e.g., toolbar, hyperlink, and pastebin).")
+                append("in the past (e.g., toolbar, hyperlink, and pastebin).\n\n")
+
+                append("Despite decreased use, hyphenation remains the norm in certain ")
+                append("compound-modifier constructions and, among some authors, with certain ")
+                append("prefixes (see below). Hyphenation is also routinely used as part of ")
+                append("syllabification in justified texts to avoid unsightly spacing (especially ")
+                append("in columns with narrow line lengths, as when used with newspapers).")
             }
         }
         //endregion

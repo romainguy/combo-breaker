@@ -7,7 +7,20 @@ Composable widget for Jetpack Compose that allows to flow text around arbitrary 
 multiple columns. The `TextFlow` composable behaves as a `Box` layout and will automatically
 flow the text content around its children.
 
-For instance, the following code:
+## Features
+
+- Multi-column layout
+- Styled strings (`AnnotatedString`)
+- Default rectangular shapes
+- Arbitrary shapes (any `Path`)
+- Justification
+- Hyphenation
+- Generate shapes from images
+- Compatible with API 29+
+
+## Examples
+
+The following code defines two images to flow text around:
 
 ```kotlin
 TextFlow(
@@ -32,14 +45,12 @@ TextFlow(
 }
 ```
 
-will produce this result:
-
 ![Flow around rectangular shapes](art/screenshot_default_shapes.png)
 
-As you can see, any child of `TextFlow` allows text to flow around a rectangular shape of the same
-dimensions of the child. The `flowShape` modifier is used to control where text flows around the
-shape (to the right/end of the T) and around both the left and right sides of the landscape photo
-(default behavior). In addition, you can define a margin around the shape.
+Any child of `TextFlow` allows text to flow around a rectangular shape of the same dimensions of the
+child. The `flowShape` modifier is used to control where text flows around the shape (to the
+right/end of the T) and around both the left and right sides of the landscape photo (default
+behavior). In addition, you can define a margin around the shape.
 
 The `flowShape` modifier also lets you specify a specific shape instead of a default rectangle.
 This can be done by passing a `Path` or a lambda that returns a `Path`. The lambda alternative
@@ -80,7 +91,10 @@ bitmap and used as the flow shape for the desired child:
 
 ![Flow around non-rectangular shapes](art/screenshot_arbitrary_shapes.png)
 
-Combo Breaker is compatible with API 29+.
+`TextFlow` supports multiple text styles and lets you control justification and hyphenation. In
+the example below, both justification and hyphenation are enabled:
+
+![Justification and hyphenation](art/screenshot_styles_and_justification.png)
 
 ## Maven
 
