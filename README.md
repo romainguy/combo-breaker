@@ -1,7 +1,7 @@
 # Combo Breaker
 
 [![combo-breaker](https://maven-badges.herokuapp.com/maven-central/dev.romainguy/combo-breaker/badge.svg?subject=combo-breaker)](https://maven-badges.herokuapp.com/maven-central/dev.romainguy/combo-breaker)
-[![combo-breaker-material3](https://maven-badges.herokuapp.com/maven-central/dev.romainguy/combo-breaker-material3/badge.svg?subject=material3)](https://maven-badges.herokuapp.com/maven-central/dev.romainguy/combo-breaker-material3)
+[![combo-breaker-material3](https://maven-badges.herokuapp.com/maven-central/dev.romainguy/combo-breaker-material3/badge.svg?subject=combo-breaker-material3)](https://maven-badges.herokuapp.com/maven-central/dev.romainguy/combo-breaker-material3)
 [![Android build status](https://github.com/romainguy/combo-breaker/workflows/Android/badge.svg)](https://github.com/romainguy/combo-breaker/actions?query=workflow%3AAndroid)
 
 Composable widget for Jetpack Compose that allows to flow text around arbitrary shapes over
