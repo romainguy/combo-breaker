@@ -18,7 +18,6 @@ package dev.romainguy.text.combobreaker
 
 import android.graphics.PointF
 import android.graphics.RectF
-import androidx.core.graphics.PathSegment
 import kotlin.math.max
 import kotlin.math.min
 
@@ -94,8 +93,8 @@ internal fun findFlowSlots(
 
             // p1 and p2 will be modified by the [clipSegment] function, which is why
             // we don't pass segment.start/end directly
-            p1.set(segment.start)
-            p2.set(segment.end)
+            p1.set(segment.x0, segment.y0)
+            p2.set(segment.x1, segment.y1)
 
             // TODO: Fix this!
             if (clipSegment(p1, p2, container, scratch)) {

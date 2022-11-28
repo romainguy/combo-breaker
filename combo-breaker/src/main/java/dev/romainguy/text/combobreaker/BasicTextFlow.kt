@@ -67,7 +67,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toOffset
 import androidx.compose.ui.unit.toSize
-import androidx.core.graphics.PathSegment
 import dev.romainguy.text.combobreaker.FlowType.None
 import dev.romainguy.text.combobreaker.FlowType.Outside
 import dev.romainguy.text.combobreaker.FlowType.OutsideEnd
@@ -325,7 +324,7 @@ fun BasicTextFlow(
         TextFlowSate(
             resolver = createFontFamilyResolver(context),
             density = density,
-            lines = mutableListOf(),
+            textSegments = mutableListOf(),
             shapes = ArrayList()
         )
     }
@@ -407,7 +406,7 @@ fun BasicTextFlow(
                 )
             }
 
-            state.lines.clear()
+            state.textSegments.clear()
 
             val result = layoutTextFlow(
                 text,
@@ -435,7 +434,7 @@ fun BasicTextFlow(
             .drawBehind {
                 drawIntoCanvas {
                     val c = it.nativeCanvas
-                    for (line in state.lines) {
+                    for (line in state.textSegments) {
                         with(line) {
                             paint.startHyphenEdit = startHyphen
                             paint.endHyphenEdit = endHyphen
@@ -502,7 +501,7 @@ fun BasicTextFlow(
 internal class TextFlowSate(
     val resolver: FontFamily.Resolver,
     val density: Density,
-    val lines: MutableList<TextLine>,
+    val textSegments: MutableList<TextSegment>,
     val shapes: ArrayList<FlowShape>
 )
 
@@ -597,8 +596,8 @@ private fun ContentDrawScope.drawDebugInfo(
         if (segment != null) {
             drawLine(
                 color = DebugColors.SegmentColor,
-                start = segment.start.toOffset(),
-                end = segment.end.toOffset(),
+                start = Offset(segment.x0, segment.y0),
+                end = Offset(segment.x1, segment.y1),
                 strokeWidth = 3.0f
             )
         }

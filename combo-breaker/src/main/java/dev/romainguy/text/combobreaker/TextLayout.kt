@@ -52,7 +52,7 @@ import kotlin.math.min
  * @param y The y coordinate of where to draw the line of text.
  * @param paint The paint to use to render this line of text.
  */
-internal class TextLine(
+internal class TextSegment(
     val text: String,
     val start: Int,
     val end: Int,
@@ -67,10 +67,10 @@ internal class TextLine(
 /**
  * Computes a layout to flow the specified text around the series of specified flow shape.
  * Each flow shape indicates on which side of the shape text should flow. The result of the
- * layout is stored in the supplied [lines] structure.
+ * layout is stored in the supplied [flowState] structure.
  *
- * The caller is responsible for iterating over the list of lines to render the result
- * (see [TextLine]).
+ * The caller is responsible for iterating over the list of txet segments to render the result
+ * (see [TextSegment]).
  *
  * @param text The text to layout.
  * @param style The default style for the text.
@@ -161,7 +161,7 @@ internal fun layoutTextFlow(
                 var descent = 0.0f
 
                 // Remember our number of "lines" to check later if we added new ones
-                val lineCount = flowState.lines.size
+                val textSegmentCount = flowState.textSegments.size
 
                 // We now need to fit as much text as possible for the current paragraph in the list
                 // of slots we just computed
@@ -239,9 +239,9 @@ internal fun layoutTextFlow(
                         val interval = state.mergedStyles[styleIndex]
                         val start = max(startOffset, interval.start.toInt())
                         val end = min(endOffset, interval.end.toInt())
-                        val lineStyle = interval.data!!
+                        val segmentStyle = interval.data!!
 
-                        val paint = state.paintForStyle(lineStyle)
+                        val paint = state.paintForStyle(segmentStyle)
 
                         val localStartHyphen = if (start == startOffset) {
                             startHyphen
@@ -255,8 +255,8 @@ internal fun layoutTextFlow(
                             Paint.START_HYPHEN_EDIT_NO_EDIT
                         }
 
-                        flowState.lines.add(
-                            TextLine(
+                        flowState.textSegments.add(
+                            TextSegment(
                                 paragraph,
                                 start,
                                 end,
@@ -305,7 +305,11 @@ internal fun layoutTextFlow(
                 // If we were not able to find a suitable slot and we haven't found
                 // our first line yet, move y forward by the default line height
                 // so we don't loop forever
-                y += if (lineCount == flowState.lines.size && ascent == 0.0f && descent == 0.0f) {
+                y += if (
+                    textSegmentCount == flowState.textSegments.size &&
+                    ascent == 0.0f &&
+                    descent == 0.0f
+                ) {
                     lineHeight
                 } else {
                     descent + ascent
@@ -484,6 +488,8 @@ private class TextLayoutState(
     // annotated string. To make lookups easier, we merge the styles ahead of time when
     // consuming a new paragraph
     val mergedStyles = ArrayList<Interval<TextStyle>>(16)
+    // Temporary list used to query paragraph styles
+    val stylesQuery = ArrayList<Interval<SpanStyle>>(16)
 
     // Cache of paints used to measurement and drawing
     val paints = mutableMapOf<TextStyle, TextPaint>()
@@ -537,7 +543,8 @@ private class TextLayoutState(
             (offset + paragraph.length).toFloat()
         )
 
-        val styles = styleIntervals.findOverlaps(searchInternal).sortedWith(styleComparator)
+        stylesQuery.clear()
+        styleIntervals.findOverlaps(searchInternal, stylesQuery).sortedWith(styleComparator)
 
         mergedStyles.add(Interval(0.0f, paragraph.length.toFloat(), textStyle))
 
@@ -546,9 +553,9 @@ private class TextLayoutState(
         // list gives the exact style for all the offsets in a given annotated string (at least
         // for our current paragraph). This allows to trivially fetch the style at any given
         // index or range.
-        val styleCount = styles.size
+        val styleCount = stylesQuery.size
         for (j in 0 until styleCount) {
-            val style = styles[j]
+            val style = stylesQuery[j]
             val start = max(style.start - offset, 0.0f)
             val end = min(style.end - offset, paragraph.length.toFloat())
 

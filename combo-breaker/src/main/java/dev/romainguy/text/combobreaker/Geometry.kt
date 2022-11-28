@@ -22,10 +22,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
-import androidx.core.graphics.PathSegment
-import androidx.core.graphics.flatten
 import kotlin.math.max
 import kotlin.math.min
+
+internal class PathSegment(val x0: Float, val y0: Float, val x1: Float, val y1: Float)
 
 /**
  * Returns an [IntervalTree] for this path. Each [Interval] in that tree wraps a path segment
@@ -39,14 +39,31 @@ internal fun Path.toIntervals(
     intervals.clear()
 
     // An error of 1 px is enough for our purpose as we don't need to AA the path
-    asAndroidPath()
-        .flatten(1.0f)
-        .forEach { segment ->
-            val start = min(segment.start.y, segment.end.y)
-            val end = max(segment.start.y, segment.end.y)
+    val pathData = asAndroidPath().approximate(1.0f)
+    val pointCount = pathData.size / 3
 
-            intervals += Interval(start, end, segment)
+    if (pointCount > 1) {
+        for (i in 1 until pointCount) {
+            val index = i * 3
+            val prevIndex = (i - 1) * 3
+
+            val d = pathData[index]
+            val x = pathData[index + 1]
+            val y = pathData[index + 2]
+
+            val pd = pathData[prevIndex]
+            val px = pathData[prevIndex + 1]
+            val py = pathData[prevIndex + 2]
+
+            if (d != pd && (x != px || y != py)) {
+                val segment = PathSegment(px, py, x, y)
+                val intervalStart = min(segment.y0, segment.y1)
+                val intervalEnd = max(segment.y0, segment.y1)
+
+                intervals += Interval(intervalStart, intervalEnd, segment)
+            }
         }
+    }
 
     return intervals
 }
