@@ -320,14 +320,7 @@ fun BasicTextFlow(
     val context = LocalContext.current
     val density = LocalDensity.current
 
-    val state = remember {
-        TextFlowSate(
-            resolver = createFontFamilyResolver(context),
-            density = density,
-            textSegments = ArrayList(),
-            shapes = ArrayList()
-        )
-    }
+    val state = remember { TextFlowSate(createFontFamilyResolver(context), density) }
 
     var debugLinePosition by remember { mutableStateOf(Float.NaN) }
 
@@ -505,10 +498,12 @@ fun BasicTextFlow(
 @Stable
 internal class TextFlowSate(
     val resolver: FontFamily.Resolver,
-    val density: Density,
-    val textSegments: ArrayList<TextSegment>,
-    val shapes: ArrayList<FlowShape>
-)
+    val density: Density
+) {
+    val textSegments: ArrayList<TextSegment> = ArrayList()
+    val shapes: ArrayList<FlowShape> = ArrayList()
+}
+
 
 private fun buildFlowShape(
     measurable: Measurable,
