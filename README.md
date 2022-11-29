@@ -125,10 +125,10 @@ repositories {
 
 dependencies {
     // Use this library and BasicTextFlow() if you don't want a dependency on material3
-    implementation 'dev.romainguy:combo-breaker:0.4.0'
+    implementation 'dev.romainguy:combo-breaker:0.5.0'
 
     // Use this library and TextFlow() if you use material3
-    implementation 'dev.romainguy:combo-breaker-material3:0.4.0'
+    implementation 'dev.romainguy:combo-breaker-material3:0.5.0'
 }
 ```
 
@@ -144,7 +144,6 @@ dependencies {
 - Add support for text-relative placement of flow shapes.
 - Implement margins support without relying on `Path.op` which can be excessively expensive with
   complex paths.
-- Reduce allocations during the layout phase.
 - BiDi text hasn't been tested yet, and probably doesn't work properly (RTL layouts are however
   supported for the placement of flow shapes and the handling of columns).
 - Improve performance of contours extraction from an image (could be multi-threaded for instance).

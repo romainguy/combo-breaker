@@ -474,7 +474,7 @@ fun BasicTextFlow(
                             column,
                             container,
                             state.shapes,
-                            results
+                            results = results
                         )
                         slots.addAll(columnSlots)
                         column.offset(columnWidth + spacing, 0.0f)
@@ -488,11 +488,11 @@ fun BasicTextFlow(
                         }
                     }
                 }
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, _ ->
-                            debugLinePosition = change.position.y
-                        }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, _ ->
+                        debugLinePosition = change.position.y
                     }
+                }
             }
     )
 }

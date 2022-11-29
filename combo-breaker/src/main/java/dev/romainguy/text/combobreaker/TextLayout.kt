@@ -125,6 +125,8 @@ internal fun layoutTextFlow(
         flowState.density
     )
 
+    val slotFinderState = FlowSlotFinderState()
+
     for (c in 0 until columnCount) {
         // Cursor to indicate where to draw the next line of text
         var y = 0.0f
@@ -154,7 +156,8 @@ internal fun layoutTextFlow(
                 val slots = findFlowSlots(
                     RectF(column.left, y, column.right, y + lineHeight),
                     RectF(0.0f, y, size.width.toFloat(), y + lineHeight),
-                    flowState.shapes
+                    flowState.shapes,
+                    slotFinderState
                 )
 
                 var ascent = 0.0f
@@ -208,7 +211,7 @@ internal fun layoutTextFlow(
                     val lineDescent = result.getLineDescent(state.lastParagraphLine)
 
                     // Don't enqueue a new line if we'd lay it out out of bounds
-                    if (y  > column.height() || (y + lineAscent + lineDescent) > column.height()) {
+                    if (y > column.height() || (y + lineAscent + lineDescent) > column.height()) {
                         break
                     }
 

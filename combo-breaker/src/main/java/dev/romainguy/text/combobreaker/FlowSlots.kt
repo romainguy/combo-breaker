@@ -22,6 +22,21 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * Holder for pre-allocated structures that will be used when findFlowSlots() is called
+ * repeatedly.
+ */
+internal class FlowSlotFinderState {
+    val slots: ArrayList<RectF> = ArrayList()
+
+    val intervals: ArrayList<Interval<PathSegment>> = ArrayList()
+    val flowShapeHits: ArrayList<FlowShape> = ArrayList()
+
+    val p1: PointF = PointF()
+    val p2: PointF = PointF()
+    val scratch: PointF = PointF()
+}
+
+/**
  * Given a layout area [box], finds all the slots (rectangles) that can be used to layout
  * content around a series of given flow shapes. In our case [box] will be a line of text
  * but it could be any other area.
@@ -33,6 +48,7 @@ import kotlin.math.min
  * @param container Bounds of the [box] container, which will typically match [box] exactly.
  * unless text is laid out over multiple columns/shapes.
  * @param flowShapes List of shapes that content must flow around.
+ * @param state Optional [FlowSlotFinderState] structure to avoid allocations across invocations.
  * @param results Optional for debug only: holds the list of [Interval] used to find slots.
  *
  * @return A list of rectangles indicating where content can be laid out.
@@ -41,25 +57,20 @@ internal fun findFlowSlots(
     box: RectF,
     container: RectF,
     flowShapes: ArrayList<FlowShape>,
+    state: FlowSlotFinderState = FlowSlotFinderState(),
     results: MutableList<Interval<PathSegment>>? = null
 ): List<RectF> {
-    // TODO: Clean up all most of the allocations we do here
-
-    // List of all the slots we found
-    val slots = mutableListOf<RectF>()
-
-    // List of all the intervals we must consider for a given shape
-    val intervals = mutableListOf<Interval<PathSegment>>()
-
-    // Temporary variable used to avoid allocations
-    val p1 = PointF()
-    val p2 = PointF()
-    val scratch = PointF()
-
-    val flowShapeHits = mutableListOf<FlowShape>()
-
     var foundIntervals = false
     val searchInterval = Interval<PathSegment>(box.top, box.bottom)
+
+    val slots = state.slots
+    val intervals = state.intervals
+    val flowShapeHits = state.flowShapeHits
+    val p1 = state.p1
+    val p2 = state.p2
+
+    slots.clear()
+    flowShapeHits.clear()
 
     val flowShapeCount = flowShapes.size
     for (i in 0 until flowShapeCount) {
@@ -96,7 +107,7 @@ internal fun findFlowSlots(
             p1.set(segment.x0, segment.y0)
             p2.set(segment.x1, segment.y1)
 
-            if (clipSegment(p1, p2, container, scratch)) {
+            if (clipSegment(p1, p2, container, state.scratch)) {
                 shapeMin = min(shapeMin, min(p1.x, p2.x))
                 shapeMax = max(shapeMax, max(p1.x, p2.x))
             }
