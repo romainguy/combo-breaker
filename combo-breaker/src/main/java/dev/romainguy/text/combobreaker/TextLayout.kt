@@ -39,9 +39,9 @@ import kotlin.math.min
  * Note the term "line" is used loosely here, as it could be just a chunk of a visual
  * line. Most of the time this will be a full line though.
  *
- * @param text The text buffer to render text from (see [start] and [end].
- * @param start The start offset in the [text] buffer.
- * @param end The end offset in the [text] buffer.
+ * @param buffer The text buffer to render text from (see [start] and [end].
+ * @param start The start offset in the [buffer] buffer.
+ * @param end The end offset in the [buffer] buffer.
  * @param startHyphen The start hyphen value for this class, as expected by
  * [TextPaint.setStartHyphenEdit].
  * @param endHyphen The start hyphen value for this class, as expected by
@@ -53,7 +53,7 @@ import kotlin.math.min
  * @param paint The paint to use to render this line of text.
  */
 internal class TextSegment(
-    val text: String,
+    val buffer: String,
     val start: Int,
     val end: Int,
     val startHyphen: Int,

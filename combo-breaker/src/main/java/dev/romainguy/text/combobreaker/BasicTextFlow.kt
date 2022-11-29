@@ -324,7 +324,7 @@ fun BasicTextFlow(
         TextFlowSate(
             resolver = createFontFamilyResolver(context),
             density = density,
-            textSegments = mutableListOf(),
+            textSegments = ArrayList(),
             shapes = ArrayList()
         )
     }
@@ -434,13 +434,18 @@ fun BasicTextFlow(
             .drawBehind {
                 drawIntoCanvas {
                     val c = it.nativeCanvas
-                    for (line in state.textSegments) {
-                        with(line) {
+                    val textSegmentCount = state.textSegments.size
+
+                    for (i in 0 until textSegmentCount) {
+                        val segment = state.textSegments[i]
+
+                        with(segment) {
                             paint.startHyphenEdit = startHyphen
                             paint.endHyphenEdit = endHyphen
                             paint.wordSpacing = justifyWidth
+
+                            c.drawText(buffer, start, end, x, y, paint)
                         }
-                        c.drawText(line.text, line.start, line.end, line.x, line.y, line.paint)
                     }
                 }
             }
@@ -501,7 +506,7 @@ fun BasicTextFlow(
 internal class TextFlowSate(
     val resolver: FontFamily.Resolver,
     val density: Density,
-    val textSegments: MutableList<TextSegment>,
+    val textSegments: ArrayList<TextSegment>,
     val shapes: ArrayList<FlowShape>
 )
 
