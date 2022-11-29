@@ -96,7 +96,6 @@ internal fun findFlowSlots(
             p1.set(segment.x0, segment.y0)
             p2.set(segment.x1, segment.y1)
 
-            // TODO: Fix this!
             if (clipSegment(p1, p2, container, scratch)) {
                 shapeMin = min(shapeMin, min(p1.x, p2.x))
                 shapeMax = max(shapeMax, max(p1.x, p2.x))
