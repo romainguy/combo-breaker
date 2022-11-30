@@ -25,6 +25,7 @@ flow the text content around its children.
 - Justification
 - Hyphenation
 - Generate shapes from images
+- Path division (extract multiple contours as a list of paths)
 - Compatible with API 29+
 
 ## Design Systems
@@ -115,6 +116,33 @@ the example below, both justification and hyphenation are enabled:
 
 ![Justification and hyphenation](art/screenshot_styles_and_justification.png)
 
+You can also specify multiple shapes for any given element by using the `flowShapes` modifiers
+instead of `flowShape`. `flowShapes` accepts/returns list of paths instead of a single path.
+This feature can be used in combination with the supporting API `Path.divide` which divides a
+path's contours into a list of individual paths. For instance:
+
+```kotlin
+val heartsShapes = heartsBitmap.toContour().asComposePath().divide()
+
+TextFlow(
+    SampleText,
+    style = TextStyle(fontSize = 12.sp),
+    columns = 2
+) {
+    Image(
+        bitmap = heartsBitmap.asImageBitmap(),
+        contentDescription = "",
+        modifier = Modifier
+            .align(Alignment.Center)
+            .flowShapes(FlowType.Outside, 4.dp, heartsShapes)
+    )
+}
+```
+
+The division operation create many shapes around which the text can flow:
+
+![Multiple shapes per element](art/screenshot_shapes.png)
+
 ## Maven
 
 ```gradle
@@ -137,8 +165,6 @@ dependencies {
 - Backport to earlier API levels.
 - Lines containing styles of different line heights can lead to improper flow around certain shapes.
 - More comprehensive `TextFlowLayoutResult`.
-- Paths with multiple contours are treated as a single shape. A future feature will allow such
-  paths to be treated as multiple shapes.
 - Add support to ellipsize the last line when the entire text cannot fit in the layout area.
 - Add support for text-relative placement of flow shapes.
 - Implement margins support without relying on `Path.op` which can be excessively expensive with

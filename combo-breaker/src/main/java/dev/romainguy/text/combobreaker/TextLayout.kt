@@ -423,6 +423,16 @@ private fun justify(
     return justifyWidth
 }
 
+// Comparator used to sort the results of an interval query against the styleIntervals
+// tree. The tree doesn't preserve ordering and this comparator puts the intervals/ranges
+// back in the order provided by AnnotatedString
+private val StyleComparator = Comparator { s1: Interval<SpanStyle>, s2: Interval<SpanStyle> ->
+        val start = (s1.start - s2.start).toInt()
+        if (start < 0.0f) -1
+        else if (start == 0) (s2.end - s1.end).toInt()
+        else 1
+    }
+
 private class TextLayoutState(
     val text: AnnotatedString,
     val textStyle: TextStyle,
@@ -507,17 +517,6 @@ private class TextLayoutState(
     var textHeight = 0.0f
     var totalOffset = 0
 
-    // Comparator used to sort the results of an interval query against the styleIntervals
-    // tree. The tree doesn't preserve ordering and this comparator puts the intervals/ranges
-    // back in the order provided by AnnotatedString
-    private val styleComparator =
-        Comparator { style1: Interval<SpanStyle>, style2: Interval<SpanStyle> ->
-            val start = (style1.start - style2.start).toInt()
-            if (start < 0.0f) -1
-            else if (start == 0) (style2.end - style1.end).toInt()
-            else 1
-        }
-
     // Moves the internal state to the next paragraph in the list
     fun nextParagraph() {
         _currentParagraph++
@@ -547,7 +546,7 @@ private class TextLayoutState(
         )
 
         stylesQuery.clear()
-        styleIntervals.findOverlaps(searchInternal, stylesQuery).sortedWith(styleComparator)
+        styleIntervals.findOverlaps(searchInternal, stylesQuery).sortedWith(StyleComparator)
 
         mergedStyles.add(Interval(0.0f, paragraph.length.toFloat(), textStyle))
 

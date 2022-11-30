@@ -65,6 +65,7 @@ import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.TextFlowHyphenation
 import dev.romainguy.text.combobreaker.TextFlowJustification
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
+import dev.romainguy.text.combobreaker.divide
 import dev.romainguy.text.combobreaker.material3.TextFlow
 import dev.romainguy.text.combobreaker.toContour
 
@@ -83,10 +84,20 @@ class ComboBreakerActivity : ComponentActivity() {
     private fun TextFlowDemo() {
         val colorScheme = MaterialTheme.colorScheme
 
+        var columns by remember { mutableStateOf(2) }
+        var useMultipleShapes by remember { mutableStateOf(false) }
+        var useRectangleShapes by remember { mutableStateOf(true) }
+        var isJustified by remember { mutableStateOf(false) }
+        var isHyphenated by remember { mutableStateOf(true) }
+        var isDebugOverlayEnabled by remember { mutableStateOf(true) }
+
         //region Sample text
-        val sampleText = remember {
+        val sampleText by remember { derivedStateOf {
             buildAnnotatedString {
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp)) {
+                    if (useMultipleShapes || !useRectangleShapes) {
+                        append("T")
+                    }
                     append("he Hyphen")
                 }
                 append("\n\n")
@@ -135,7 +146,7 @@ class ComboBreakerActivity : ComponentActivity() {
                 append("syllabification in justified texts to avoid unsightly spacing (especially ")
                 append("in columns with narrow line lengths, as when used with newspapers).")
             }
-        }
+        } }
         //endregion
 
         val microphone = remember {
@@ -155,11 +166,16 @@ class ComboBreakerActivity : ComponentActivity() {
         val letterT = remember { BitmapFactory.decodeResource(resources, R.drawable.letter_t) }
         val landscape = remember { BitmapFactory.decodeResource(resources, R.drawable.landscape) }
 
-        var columns by remember { mutableStateOf(2) }
-        var useRectangleShapes by remember { mutableStateOf(true) }
-        var isJustified by remember { mutableStateOf(false) }
-        var isHyphenated by remember { mutableStateOf(true) }
-        var isDebugOverlayEnabled by remember { mutableStateOf(true) }
+        val hearts = remember { BitmapFactory.decodeResource(resources, R.drawable.hearts) }
+        val heartsShape by remember {
+            derivedStateOf {
+                if (useMultipleShapes) {
+                    hearts.toContour().asComposePath().divide()
+                } else {
+                    emptyList()
+                }
+            }
+        }
 
         val justification by remember {
             derivedStateOf {
@@ -184,45 +200,61 @@ class ComboBreakerActivity : ComponentActivity() {
             TextFlow(
                 sampleText,
                 modifier = Modifier.weight(1.0f).fillMaxWidth(),
-                style =  LocalTextStyle.current.merge(TextStyle(color = colorScheme.onSurface)),
+                style =  LocalTextStyle.current.merge(
+                    TextStyle(
+                        color = colorScheme.onSurface,
+                        fontSize = if (useMultipleShapes) 12.sp else LocalTextStyle.current.fontSize
+                    )
+                ),
                 justification = justification,
                 hyphenation = hyphenation,
                 columns = columns,
                 debugOverlay = isDebugOverlayEnabled
             ) {
-                Image(
-                    bitmap = (if (useRectangleShapes) letterT else microphone).asImageBitmap(),
-                    contentDescription = "",
-                    modifier = Modifier
-                        .offset {
-                            if (useRectangleShapes)
-                                IntOffset(0, 0)
-                            else
-                                Offset(-microphone.width / 4.5f, 0.0f).round()
-                        }
-                        .flowShape(
-                            FlowType.OutsideEnd,
-                            if (useRectangleShapes) 0.dp else 8.dp,
-                            if (useRectangleShapes) null else microphoneShape
-                        )
-                )
+                if (!useMultipleShapes) {
+                    Image(
+                        bitmap = (if (useRectangleShapes) letterT else microphone).asImageBitmap(),
+                        contentDescription = "",
+                        modifier = Modifier
+                            .offset {
+                                if (useRectangleShapes)
+                                    IntOffset(0, 0)
+                                else
+                                    Offset(-microphone.width / 4.5f, 0.0f).round()
+                            }
+                            .flowShape(
+                                FlowType.OutsideEnd,
+                                if (useRectangleShapes) 0.dp else 8.dp,
+                                if (useRectangleShapes) null else microphoneShape
+                            )
+                    )
 
-                Image(
-                    bitmap = (if (useRectangleShapes) landscape else badge).asImageBitmap(),
-                    contentDescription = "",
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .flowShape(
-                            FlowType.Outside,
-                            if (useRectangleShapes) 8.dp else 10.dp,
-                            if (useRectangleShapes) null else badgeShape
-                        )
-                )
+                    Image(
+                        bitmap = (if (useRectangleShapes) landscape else badge).asImageBitmap(),
+                        contentDescription = "",
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .flowShape(
+                                FlowType.Outside,
+                                if (useRectangleShapes) 8.dp else 10.dp,
+                                if (useRectangleShapes) null else badgeShape
+                            )
+                    )
+                } else {
+                    Image(
+                        bitmap = hearts.asImageBitmap(),
+                        contentDescription = "",
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .flowShapes(FlowType.Outside, 2.dp, heartsShape)
+                    )
+                }
             }
 
             DemoControls(
                 columns, { columns = it },
                 useRectangleShapes, { useRectangleShapes = it },
+                useMultipleShapes, { useMultipleShapes = it },
                 isJustified, { isJustified = it},
                 isHyphenated, { isHyphenated = it},
                 isDebugOverlayEnabled, { isDebugOverlayEnabled = it},
@@ -235,7 +267,9 @@ class ComboBreakerActivity : ComponentActivity() {
         columns: Int,
         onColumnsChanged: (Int) -> Unit,
         useRectangleShapes: Boolean,
-        onRectangleShapesChanged: (Boolean) -> Unit,
+        onUseRectangleShapesChanged: (Boolean) -> Unit,
+        useMultipleShapes: Boolean,
+        onUseMultipleShapesChanged: (Boolean) -> Unit,
         justify: Boolean,
         onJustifyChanged: (Boolean) -> Unit,
         hyphenation: Boolean,
@@ -254,20 +288,19 @@ class ComboBreakerActivity : ComponentActivity() {
             )
             Spacer(modifier = Modifier.width(8.dp))
 
-            Checkbox(checked = useRectangleShapes, onCheckedChange = onRectangleShapesChanged)
-            Text(text = "Rectangles")
+            Checkbox(checked = useRectangleShapes, onCheckedChange = onUseRectangleShapesChanged)
+            Text(text = "Rects")
+
+            Checkbox(checked = useMultipleShapes, onCheckedChange = onUseMultipleShapesChanged)
+            Text(text = "Multi")
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Checkbox(checked = justify, onCheckedChange = onJustifyChanged)
             Text(text = "Justify")
 
-            Spacer(modifier = Modifier.width(8.dp))
-
             Checkbox(checked = hyphenation, onCheckedChange = onHyphenationChanged)
             Text(text = "Hyphenate")
-
-            Spacer(modifier = Modifier.width(8.dp))
 
             Checkbox(checked = debugOverlay, onCheckedChange = onDebugOverlayChanged)
             Text(text = "Debug")

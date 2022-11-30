@@ -387,7 +387,7 @@ fun BasicTextFlow(
                     selfSize
                 )
 
-                buildFlowShape(
+                buildFlowShapes(
                     measurable,
                     position.toOffset(),
                     size,
@@ -504,8 +504,7 @@ internal class TextFlowSate(
     val shapes: ArrayList<FlowShape> = ArrayList()
 }
 
-
-private fun buildFlowShape(
+private fun buildFlowShapes(
     measurable: Measurable,
     elementPosition: Offset,
     size: IntSize,
@@ -530,15 +529,26 @@ private fun buildFlowShape(
         textFlowData.position
     }
 
-    val path = Path()
-    val sourcePath = textFlowData.flowShape(size, boxSize)
-    if (sourcePath == null) {
-        path.addRect(Rect(position, size.toSize()))
-    } else {
-        path.addPath(sourcePath, position)
-    }
-
+    val flowType = textFlowData.flowType.resolve(layoutDirection)
     val margin = with (density) { textFlowData.margin.toPx() }
+
+    val sourcePaths = textFlowData.flowShapes(size, boxSize)
+    if (sourcePaths.isEmpty()) {
+        val path = Path()
+        path.addRect(Rect(position, size.toSize()))
+        expandAndClipPath(path, margin, clip)
+        flowShapes += FlowShape(path, flowType)
+    } else {
+        for (sourcePath in sourcePaths) {
+            val path = Path()
+            path.addPath(sourcePath, position)
+            expandAndClipPath(path, margin, clip)
+            flowShapes += FlowShape(path, flowType)
+        }
+    }
+}
+
+private fun expandAndClipPath(path: Path, margin: Float, clip: Path) {
     if (margin > 0.0f) {
         // Note: see comment below
         val androidPath = path.asAndroidPath()
@@ -557,8 +567,6 @@ private fun buildFlowShape(
     path
         .asAndroidPath()
         .op(clip.asAndroidPath(), android.graphics.Path.Op.INTERSECT)
-
-    flowShapes += FlowShape(path, textFlowData.flowType.resolve(layoutDirection))
 }
 
 private fun Placeable.PlacementScope.placeElement(
@@ -636,11 +644,22 @@ private fun ContentDrawScope.drawDebugInfo(
 
 /**
  * Lambda type used by [TextFlowScope.flowShape] to compute a flow shape defined as a [Path].
+ *
  * The two parameters are:
  * - `size` The size of the element the flowShape modifier is applied to.
  * - `textFlowSize` The size of the parent [BasicTextFlow] container.
  */
 typealias FlowShapeProvider = (size: IntSize, textFlowSize: IntSize) -> Path?
+
+/**
+ * Lambda type used by [TextFlowScope.flowShape] to compute a list of flow shapes defined as [Path]
+ * instances.
+ *
+ * The two parameters are:
+ * - `size` The size of the element the flowShape modifier is applied to.
+ * - `textFlowSize` The size of the parent [BasicTextFlow] container.
+ */
+typealias FlowShapeListProvider = (size: IntSize, textFlowSize: IntSize) -> List<Path>
 
 /**
  * A [TextFlowScope] provides a scope for the children of [BasicTextFlow].
@@ -683,6 +702,21 @@ interface TextFlowScope {
     ): Modifier
 
     /**
+     * Sets the shapes used to flow text around this element.
+     *
+     * @param flowType Defines how text flows around this element, see [FlowType].
+     * @param margin The extra margin to add around this element for text flow.
+     * @param flowShapes A list of [Path] defining the shapes used to flow text around this element.
+     * If the list is empty, a rectangle of the dimensions of this element will be used by default.
+     */
+    @Stable
+    fun Modifier.flowShapes(
+        flowType: FlowType = Outside,
+        margin: Dp = 0.dp,
+        flowShapes: List<Path> = emptyList()
+    ): Modifier
+
+    /**
      * Sets the shape used to flow text around this element. This variant of the [flowShape]
      * modifier accepts a lambda to define the shape used to flow text. That lambda receives
      * as parameters the size of this element and the size of the parent [BasicTextFlow] to
@@ -699,6 +733,25 @@ interface TextFlowScope {
         flowType: FlowType = Outside,
         margin: Dp = 0.dp,
         flowShape: FlowShapeProvider
+    ): Modifier
+
+    /**
+     * Sets the shapes used to flow text around this element. This variant of the [flowShapes]
+     * modifier accepts a lambda to define the shapes used to flow text. That lambda receives
+     * as parameters the size of this element and the size of the parent [BasicTextFlow] to
+     * facilitate the computation of an appropriate list of [Path].
+     *
+     * @param flowType Defines how text flows around this element, see [FlowType].
+     * @param margin The extra margin to add around this element for text flow.
+     * @param flowShapes A lambda that returns a list of [Path] defining the shapes used to flow
+     * text around this element. If the list is empty, a rectangle of the dimensions of this
+     * element will be used instead.
+     */
+    @Stable
+    fun Modifier.flowShapes(
+        flowType: FlowType = Outside,
+        margin: Dp = 0.dp,
+        flowShapes: FlowShapeListProvider
     ): Modifier
 }
 
@@ -721,7 +774,9 @@ private object TextFlowScopeInstance : TextFlowScope {
 
     @Stable
     override fun Modifier.flowShape(flowType: FlowType, margin: Dp, flowShape: Path?) = this.then(
-        FlowShapeModifier(flowType, margin) { _, _ -> flowShape }
+        FlowShapeModifier(flowType, margin) { _, _ ->
+            if (flowShape == null) emptyList() else listOf(flowShape)
+        }
     )
 
     @Stable
@@ -730,7 +785,28 @@ private object TextFlowScopeInstance : TextFlowScope {
         margin: Dp,
         flowShape: FlowShapeProvider
     ) = this.then(
-        FlowShapeModifier(flowType, margin, flowShape)
+        FlowShapeModifier(flowType, margin) { size, containerSize ->
+            val path = flowShape(size, containerSize)
+            if (path == null) emptyList() else listOf(path)
+        }
+    )
+
+    @Stable
+    override fun Modifier.flowShapes(
+        flowType: FlowType,
+        margin: Dp,
+        flowShapes: List<Path>
+    ) = this.then(
+        FlowShapeModifier(flowType, margin) { _, _ -> flowShapes }
+    )
+
+    @Stable
+    override fun Modifier.flowShapes(
+        flowType: FlowType,
+        margin: Dp,
+        flowShapes: FlowShapeListProvider
+    ) = this.then(
+        FlowShapeModifier(flowType, margin, flowShapes)
     )
 }
 
@@ -776,7 +852,7 @@ private class AlignmentAndSizeModifier(
 private class FlowShapeModifier(
     val flowType: FlowType,
     val margin: Dp,
-    val flowShape: FlowShapeProvider
+    val flowShape: FlowShapeListProvider
 ) : ParentDataModifier, OnPlacedModifier {
     var localParentData: TextFlowParentData? = null
 
@@ -784,7 +860,7 @@ private class FlowShapeModifier(
         localParentData = ((parentData as? TextFlowParentData) ?: TextFlowParentData()).also {
             it.margin = margin
             it.flowType = flowType
-            it.flowShape = flowShape
+            it.flowShapes = flowShape
         }
         return localParentData!!
     }
@@ -823,7 +899,7 @@ private data class TextFlowParentData(
     var matchParentSize: Boolean = false,
     var margin: Dp = 0.dp,
     var flowType: FlowType = Outside,
-    var flowShape: FlowShapeProvider = { _, _ -> null },
+    var flowShapes: FlowShapeListProvider = { _, _ -> emptyList() },
     var position: Offset = Offset.Unspecified
 )
 

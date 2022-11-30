@@ -21,6 +21,8 @@ import android.graphics.RectF
 import kotlin.math.max
 import kotlin.math.min
 
+private val RectComparator = Comparator { r1: RectF, r2: RectF -> (r1.left - r2.left).toInt() }
+
 /**
  * Holder for pre-allocated structures that will be used when findFlowSlots() is called
  * repeatedly.
@@ -128,6 +130,8 @@ internal fun findFlowSlots(
     if (slots.size == 0 && !foundIntervals) {
         slots.add(RectF(box))
     }
+
+    slots.sortWith(RectComparator)
 
     return slots
 }

@@ -21,8 +21,72 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asAndroidPath
+import dev.romainguy.graphics.path.PathSegment.Type.*
+import dev.romainguy.graphics.path.iterator
 import kotlin.math.max
 import kotlin.math.min
+
+/**
+ * Divides this path into a list of paths. Each contour inside this path is returned as a separate
+ * [Path]. For instance the following code snippet creates two rectangular contours:
+ *
+ * ```
+ * val p = Path()
+ * p.addRect(…)
+ * p.addRect(…)
+ * val paths = p.divide()
+ * ```
+ * The list returned by calling `p.divide()` will contain two `Path` instances, each representing
+ * one of the two rectangles.
+ *
+ * @param paths An optional mutable list of [Path] that will hold the result of the division.
+ *
+ * @return A list of [Path] representing all the contours in this path. The returned list is either
+ * a newly allocated list if the [paths] parameter was left unspecified, or the [paths] parameter.
+ */
+fun Path.divide(paths: MutableList<Path> = mutableListOf()): List<Path> {
+    var path = Path()
+
+    var first = true
+
+    val iterator = asAndroidPath().iterator()
+    val points = FloatArray(8)
+
+    while (iterator.hasNext()) {
+        when (iterator.next(points)) {
+            Move -> {
+                if (!first) {
+                    paths.add(path)
+                    path = Path()
+                }
+                first = false
+                path.moveTo(points[0], points[1])
+            }
+            Line -> path.lineTo(points[2], points[3])
+            Quadratic -> path.quadraticBezierTo(
+                points[2],
+                points[3],
+                points[4],
+                points[5]
+            )
+            Conic -> continue // We convert conics to quadratics
+            Cubic -> path.cubicTo(
+                points[2],
+                points[3],
+                points[4],
+                points[5],
+                points[6],
+                points[7]
+            )
+            Close -> path.close()
+            Done -> continue // Won't happen inside this loop
+        }
+    }
+
+    if (!first) paths.add(path)
+
+    return paths
+}
 
 internal class PathSegment(val x0: Float, val y0: Float, val x1: Float, val y1: Float)
 
