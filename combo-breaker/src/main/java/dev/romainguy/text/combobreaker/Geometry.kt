@@ -16,7 +16,6 @@
 
 package dev.romainguy.text.combobreaker
 
-import android.graphics.PointF
 import android.graphics.RectF
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
