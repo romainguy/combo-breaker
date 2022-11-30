@@ -69,9 +69,6 @@ internal fun Path.toIntervals(
 }
 
 @Suppress("NOTHING_TO_INLINE")
-internal inline fun PointF.toOffset() = Offset(x, y)
-
-@Suppress("NOTHING_TO_INLINE")
 internal inline fun RectF.toOffset() = Offset(left, top)
 
 @Suppress("NOTHING_TO_INLINE")
