@@ -35,19 +35,79 @@ import kotlin.math.min
  * This value is between 0.0 and 1.0.
  * @param minAngle Minimum angle between two segments in the contour before they are collapsed
  * to simplify the final geometry.
+ *
+ * @return A [Path] containing all the contours detected in this [Bitmap], separated by `moveTo`
+ * commands inside the path.
  */
-fun Bitmap.toContour(
+fun Bitmap.toPath(
     alphaThreshold: Float = 0.0f,
     minAngle: Float = 15.0f,
 ): Path {
-    val w = width
-    val h = height
-
     if (!hasAlpha()) {
         return Path().apply {
-            addRect(0.0f, 0.0f, w.toFloat(), h.toFloat(), Path.Direction.CCW)
+            addRect(0.0f, 0.0f, width.toFloat(), height.toFloat(), Path.Direction.CCW)
         }
     }
+
+    val contours = toContourSet(alphaThreshold)
+
+    val path = Path()
+    val size = contours.size
+    for (i in 0 until size) {
+        val contour = if (minAngle < 1.0f) contours[i] else contours[i].simplify(minAngle)
+        contour.toPath(path)
+    }
+
+    return path
+}
+
+/**
+ * Extract the contours of this [Bitmap] as a list of [Path]. The contours are traced by following
+ * opaque pixels, as defined by [alphaThreshold]. Any pixel with an alpha channel value greater
+ * than the specified [alphaThreshold] is considered opaque.
+ *
+ * After the contours are built, a simplification pass is performed to reduce the complexity of the
+ * paths. The [minAngle] parameter defines the minimum angle between two segments in the contour
+ * before they are collapsed. For instance, passing a [minAngle] of 45 means that the final path
+ * will not contain adjacent segments with an angle greater than 45 degrees.
+ *
+ * @param alphaThreshold Maximum alpha channel a pixel might have before being considered opaque.
+ * This value is between 0.0 and 1.0.
+ * @param minAngle Minimum angle between two segments in the contour before they are collapsed
+ * to simplify the final geometry.
+ *
+ * @return A list of [Path] containing all the contours detected in this [Bitmap] as separate
+ * paths.
+ */
+fun Bitmap.toPaths(
+    alphaThreshold: Float = 0.0f,
+    minAngle: Float = 15.0f,
+): List<Path> {
+    if (!hasAlpha()) {
+        return listOf(
+            Path().apply {
+                addRect(0.0f, 0.0f, width.toFloat(), height.toFloat(), Path.Direction.CCW)
+            }
+        )
+    }
+
+    val contours = toContourSet(alphaThreshold)
+    val paths = mutableListOf<Path>()
+
+    val size = contours.size
+    for (i in 0 until size) {
+        val path = Path()
+        val contour = if (minAngle < 1.0f) contours[i] else contours[i].simplify(minAngle)
+        contour.toPath(path)
+        paths += path
+    }
+
+    return paths
+}
+
+private fun Bitmap.toContourSet(alphaThreshold: Float): ContourSet {
+    val w = width
+    val h = height
 
     val pixels = IntArray(w * h)
     getPixels(pixels, 0, w, 0, 0, w, h)
@@ -87,14 +147,12 @@ fun Bitmap.toContour(
                     contours.addLine(xM, y0, x1, yM)
                     contours.addLine(x0, y1, x0, yM)
                 }
-
                 0x7 -> contours.addLine(xM, y1, x1, yM)
                 0x8 -> contours.addLine(x1, yM, xM, y1)
                 0x9 -> {
                     contours.addLine(x0, yM, xM, y0)
                     contours.addLine(x1, yM, xM, y1)
                 }
-
                 0xA -> contours.addLine(xM, y0, xM, y1)
                 0xB -> contours.addLine(x0, yM, xM, y1)
                 0xC -> contours.addLine(x1, yM, x0, yM)
@@ -105,14 +163,7 @@ fun Bitmap.toContour(
         }
     }
 
-    val path = Path()
-    val size = contours.size
-    for (i in 0 until size) {
-        val contour = if (minAngle < 1.0f) contours[i] else contours[i].simplify(minAngle)
-        contour.toPath(path)
-    }
-
-    return path
+    return contours
 }
 
 @Suppress("NOTHING_TO_INLINE")

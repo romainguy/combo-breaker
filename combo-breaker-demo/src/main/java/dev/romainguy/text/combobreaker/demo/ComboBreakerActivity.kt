@@ -65,9 +65,9 @@ import dev.romainguy.text.combobreaker.FlowType
 import dev.romainguy.text.combobreaker.TextFlowHyphenation
 import dev.romainguy.text.combobreaker.TextFlowJustification
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
-import dev.romainguy.text.combobreaker.divide
 import dev.romainguy.text.combobreaker.material3.TextFlow
-import dev.romainguy.text.combobreaker.toContour
+import dev.romainguy.text.combobreaker.toPath
+import dev.romainguy.text.combobreaker.toPaths
 
 class ComboBreakerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -155,12 +155,12 @@ class ComboBreakerActivity : ComponentActivity() {
             }
         }
         val microphoneShape by remember {
-            derivedStateOf { microphone.toContour(alphaThreshold = 0.5f).asComposePath() }
+            derivedStateOf { microphone.toPath(alphaThreshold = 0.5f).asComposePath() }
         }
 
         val badge = remember { BitmapFactory.decodeResource(resources, R.drawable.badge) }
         val badgeShape by remember {
-            derivedStateOf { badge.toContour().asComposePath() }
+            derivedStateOf { badge.toPath().asComposePath() }
         }
 
         val letterT = remember { BitmapFactory.decodeResource(resources, R.drawable.letter_t) }
@@ -170,7 +170,7 @@ class ComboBreakerActivity : ComponentActivity() {
         val heartsShape by remember {
             derivedStateOf {
                 if (useMultipleShapes) {
-                    hearts.toContour().asComposePath().divide()
+                    hearts.toPaths().map { it.asComposePath() }
                 } else {
                     emptyList()
                 }
