@@ -134,9 +134,8 @@ dependencies {
 
 ## Roadmap
 
-- Properly support paragraphs with styles of different line heights.
 - Backport to earlier API levels.
-- Optimizations!
+- Lines containing styles of different line heights can lead to improper flow around certain shapes.
 - More comprehensive `TextFlowLayoutResult`.
 - Paths with multiple contours are treated as a single shape. A future feature will allow such
   paths to be treated as multiple shapes.
