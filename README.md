@@ -24,8 +24,6 @@ flow the text content around its children.
 - Arbitrary shapes (any `Path`)
 - Justification
 - Hyphenation
-- Generate shapes from images
-- Path division (extract multiple contours as a list of paths)
 - Compatible with API 29+
 
 ## Design Systems
@@ -106,8 +104,9 @@ TextFlow(
 }
 ```
 
-Using the extension `Bitmap.toPath` provided by this library, a shape can be extracted from a
-bitmap and used as the flow shape for the desired child:
+The non-rectangular `Path` shape is created using the extension `Bitmap.toPath` from the
+[pathway](https://github.com/romainguy/pathway) library. Using that API, a shape can be extracted
+from a bitmap and used as the flow shape for the desired child:
 
 ![Flow around non-rectangular shapes](art/screenshot_arbitrary_shapes.png)
 
@@ -117,9 +116,9 @@ the example below, both justification and hyphenation are enabled:
 ![Justification and hyphenation](art/screenshot_styles_and_justification.png)
 
 You can also specify multiple shapes for any given element by using the `flowShapes` modifiers
-instead of `flowShape`. `flowShapes` accepts/returns list of paths instead of a single path. You
-can easily extract a list of paths from a `Bitmap` by using `Bitmap.toPaths()` instead of
-`Bitmap.toPath()`. For instance:
+instead of `flowShape`. `flowShapes` accepts/returns list of paths instead of a single path.
+For instance, with [pathway](https://github.com/romainguy/pathway) you can easily extract a list of
+paths from a `Bitmap` by using `Bitmap.toPaths()` instead of `Bitmap.toPath()`.
 
 ```kotlin
 val heartsShapes = heartsBitmap.toPaths().map { it.asComposePath() }
@@ -139,7 +138,7 @@ TextFlow(
 }
 ```
 
-The division operation create many shapes around which the text can flow:
+This creates many shapes around which the text can flow:
 
 ![Multiple shapes per element](art/screenshot_shapes.png)
 
@@ -153,10 +152,10 @@ repositories {
 
 dependencies {
     // Use this library and BasicTextFlow() if you don't want a dependency on material3
-    implementation 'dev.romainguy:combo-breaker:0.7.0'
+    implementation 'dev.romainguy:combo-breaker:0.8.0'
 
     // Use this library and TextFlow() if you use material3
-    implementation 'dev.romainguy:combo-breaker-material3:0.7.0'
+    implementation 'dev.romainguy:combo-breaker-material3:0.8.0'
 }
 ```
 

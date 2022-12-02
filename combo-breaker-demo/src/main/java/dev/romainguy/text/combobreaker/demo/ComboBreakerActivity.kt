@@ -66,8 +66,8 @@ import dev.romainguy.text.combobreaker.TextFlowHyphenation
 import dev.romainguy.text.combobreaker.TextFlowJustification
 import dev.romainguy.text.combobreaker.demo.ui.theme.ComboBreakerTheme
 import dev.romainguy.text.combobreaker.material3.TextFlow
-import dev.romainguy.text.combobreaker.toPath
-import dev.romainguy.text.combobreaker.toPaths
+import dev.romainguy.graphics.path.toPath
+import dev.romainguy.graphics.path.toPaths
 
 class ComboBreakerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
