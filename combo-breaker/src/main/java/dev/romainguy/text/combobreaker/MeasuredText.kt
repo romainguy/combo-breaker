@@ -19,7 +19,7 @@ package dev.romainguy.text.combobreaker
 import android.graphics.text.MeasuredText
 import androidx.annotation.RequiresApi
 
-object MeasuredTextHelper {
+internal object MeasuredTextHelper {
     @RequiresApi(33)
     fun hyphenation(builder: MeasuredText.Builder, hyphenation: TextFlowHyphenation) {
         if (hyphenation != TextFlowHyphenation.None) {
