@@ -45,7 +45,7 @@ import kotlin.math.min
  * @param startHyphen The start hyphen value for this class, as expected by
  * [TextPaint.setStartHyphenEdit].
  * @param endHyphen The start hyphen value for this class, as expected by
- * [TextPaint.setStartHyphenEdit].
+ * [TextPaint.setEndHyphenEdit].
  * @param justifyWidth The word spacing required to justify this line of text, as expected by
  * [TextPaint.setWordSpacing].
  * @param x The x coordinate of where to draw the line of text.
