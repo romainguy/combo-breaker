@@ -6,7 +6,7 @@ plugins {
 android {
     namespace 'dev.romainguy.text.combobreaker.demo'
 
-    compileSdk 33
+    compileSdkPreview 'UpsideDownCake'
 
     defaultConfig {
         applicationId 'dev.romainguy.text.combobreaker.demo'
