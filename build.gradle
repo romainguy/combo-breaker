@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 buildscript {
     ext {
         compose_bom = '2023.01.00'
@@ -6,19 +8,19 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.22.0'
+        classpath 'com.vanniktech:gradle-maven-publish-plugin:0.24.0'
         classpath 'org.jetbrains.dokka:dokka-gradle-plugin:1.7.20'
     }
 }
 
 plugins {
-    id 'com.android.application' version '8.1.0-alpha02' apply false
-    id 'com.android.library' version '8.1.0-alpha02' apply false
+    id 'com.android.application' version '8.1.0-alpha04' apply false
+    id 'com.android.library' version '8.1.0-alpha04' apply false
     id 'org.jetbrains.kotlin.android' version '1.7.20' apply false
 }
 
 subprojects {
-    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    tasks.withType(KotlinCompile).configureEach {
         kotlinOptions {
             if (project.findProperty("combo-breaker.enableComposeCompilerReports") == "true") {
                 freeCompilerArgs += [
