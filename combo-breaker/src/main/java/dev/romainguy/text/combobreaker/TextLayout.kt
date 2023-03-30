@@ -93,7 +93,7 @@ internal fun layoutTextFlow(
     layoutDirection: LayoutDirection,
     justification: TextFlowJustification,
     hyphenation: TextFlowHyphenation,
-    flowState: TextFlowSate
+    flowState: TextFlowState
 ): TextFlowLayoutResult {
 
     val lineBreaker = LineBreaker.Builder()

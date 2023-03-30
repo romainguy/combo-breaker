@@ -320,7 +320,7 @@ fun BasicTextFlow(
     val context = LocalContext.current
     val density = LocalDensity.current
 
-    val state = remember { TextFlowSate(createFontFamilyResolver(context), density) }
+    val state = remember { TextFlowState(createFontFamilyResolver(context), density) }
 
     var debugLinePosition by remember { mutableStateOf(Float.NaN) }
 
@@ -496,7 +496,7 @@ fun BasicTextFlow(
 }
 
 @Stable
-internal class TextFlowSate(
+internal class TextFlowState(
     val resolver: FontFamily.Resolver,
     val density: Density
 ) {
