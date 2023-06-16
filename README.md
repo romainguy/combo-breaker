@@ -175,6 +175,10 @@ dependencies {
   of the purely geometric approach that currently requires a lot of intersection work).
 - Support flowing text inside shapes.
 
+## Media and Press
+
+- Code with the Italians episode where we showcase the library ▶️ https://youtu.be/JjeM0tc6CVI
+
 ## License
 
 Please see [LICENSE](./LICENSE).
