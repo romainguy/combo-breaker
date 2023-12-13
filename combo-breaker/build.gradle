@@ -10,11 +10,10 @@ version = VERSION_NAME
 android {
     namespace 'dev.romainguy.text.combobreaker'
 
-    compileSdkPreview 'UpsideDownCake'
-
     defaultConfig {
         minSdk 29
-        targetSdk 33
+        targetSdk 34
+        compileSdk 34
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

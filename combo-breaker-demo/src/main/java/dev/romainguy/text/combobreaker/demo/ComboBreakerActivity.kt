@@ -203,7 +203,7 @@ class ComboBreakerActivity : ComponentActivity() {
                 style =  LocalTextStyle.current.merge(
                     TextStyle(
                         color = colorScheme.onSurface,
-                        fontSize = if (useMultipleShapes) 12.sp else LocalTextStyle.current.fontSize
+                        fontSize = if (useMultipleShapes) 13.sp else LocalTextStyle.current.fontSize
                     )
                 ),
                 justification = justification,

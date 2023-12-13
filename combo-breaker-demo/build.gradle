@@ -6,12 +6,12 @@ plugins {
 android {
     namespace 'dev.romainguy.text.combobreaker.demo'
 
-    compileSdkPreview 'UpsideDownCake'
-
     defaultConfig {
         applicationId 'dev.romainguy.text.combobreaker.demo'
         minSdk 29
-        targetSdk 33
+        targetSdk 34
+        compileSdk 34
+
         versionCode 1
         versionName '1.0'
 
@@ -21,10 +21,10 @@ android {
     }
 
     buildTypes {
-       release {
-           minifyEnabled false
-           proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-       }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
     }
 
     compileOptions {
@@ -58,10 +58,10 @@ dependencies {
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.material3:material3'
 
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
-    implementation 'androidx.activity:activity-compose:1.6.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
+    implementation 'androidx.activity:activity-compose:1.8.1'
 
-    implementation 'dev.romainguy:pathway:0.11.0'
+    implementation 'dev.romainguy:pathway:0.17.0'
 
     implementation project(path: ':combo-breaker-material3')
 }
