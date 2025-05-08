@@ -1,7 +1,10 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
     id 'org.jetbrains.dokka'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
 group = GROUP
@@ -12,27 +15,23 @@ android {
 
     defaultConfig {
         minSdk 29
-        targetSdk 34
-        compileSdk 34
+        targetSdk 36
+        compileSdk 36
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '21'
     }
 
     buildFeatures {
         compose true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion compose_compiler_version
     }
 }
 
@@ -43,3 +42,8 @@ dependencies {
 }
 
 apply plugin: 'com.vanniktech.maven.publish'
+
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
+}
